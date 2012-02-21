@@ -26,7 +26,7 @@ __status__ = "Development"
 # Defaults
 defaultConfPaths = ['./pybackup.conf', '/etc/pybackup.conf']
 defaultLogLevel = logging.INFO
-defaultLogFormat = '%(asctime)s:%(job)s:%(levelname)s %(message)s'
+defaultLogFormat = '%(asctime)s:%(job)s:%(levelname)-8s %(message)s'
 defaultDateFormat = '%Y-%m-%d %H:%M:%S'
 
 # Global Default Settings
@@ -119,7 +119,7 @@ class BackupJob():
             backup_path_elem = [self._conf['backup_root'], ]
             if (self._conf.has_key('hostname_dir') 
                 and parse_value(self._conf['hostname_dir'])):
-                backup_path_elem.append(platform.node())
+                backup_path_elem.append(str(platform.node()).split('.')[0])
             backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
             backup_path_elem.append(name)
             self._conf['backup_path'] = os.path.join(*backup_path_elem)
