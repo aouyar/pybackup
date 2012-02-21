@@ -90,7 +90,7 @@ class BackupJob():
     
     def __init__(self, name, global_conf, job_conf):
         self._name = name
-        self._conf = {}
+        self._conf = {'job_name': name}
         self._conf.update(global_conf)
         self._conf.update(job_conf)
         if self._conf.has_key('backup_root'):
@@ -160,10 +160,11 @@ backupMethodRegistry = BackupMethodRegistry()
 
 
 
-defaultsPg = { 'cmd_pg_dump': 'pg_dump',
+defaultsPg = { 'job_name': 'PostgreSQL Backup',
+               'cmd_pg_dump': 'pg_dump',
                'cmd_pg_dumpall': 'pg_dumpall',
                'filename_dump_globals': 'pg_dump_globals.gz',
-               'filename_dump_db_prefix': 'pg_dump_db_',
+               'filename_dump_db_prefix': 'pg_dump_db',
                }
 
 defaultBufferSize=4096
@@ -172,7 +173,7 @@ class PgDumper():
     
     def __init__(self, **kwargs):
         self._conf = {}
-        for k in ('backup_path',
+        for k in ('job_name', 'backup_path',
                   'cmd_pg_dump', 'cmd_pg_dumpall', 'cmd_gzip',
                   'filename_dump_globals', 'filename_dump_db_prefix',
                   'db_list',
@@ -185,10 +186,10 @@ class PgDumper():
     def pgDumpGlobals(self):
         dump_path = os.path.join(self._conf['backup_path'], 
                                  self._conf['filename_dump_globals'])
-        args1 = [self._conf['cmd_pg_dump_all'], '-g']
+        args1 = [self._conf['cmd_pg_dumpall'], '-g']
         args2 = [self._conf['cmd_gzip'], '-c']
-        logger.info("PgDumper: Start PostgreSQL Global Objects dump. "
-                    "Backup: %s", dump_path)
+        logger.info("PgDumper: Starting PostgreSQL Global Objects dump."
+                    "  Backup: %s", dump_path)
         try:
             cmd1 = subprocess.Popen(args1, 
                                     stdout=subprocess.PIPE,
@@ -230,18 +231,57 @@ class PgDumper():
                               *errdata2.splitlines())
 
     def pgDumpDatabase(self, db):
-        pass
+        dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db_prefix'], 
+                                        db)
+        dump_path = os.path.join(self._conf['backup_path'], dump_filename)
+        args = [self._conf['cmd_pg_dump'], '-Fc', '-f', dump_path, db]
+        logger.info("PgDumper: Starting dump of PostgreSQL Database: %s"
+                    "  Backup: %s", db, dump_path)
+        try:
+            cmd = subprocess.Popen(args, 
+                                   stderr=subprocess.PIPE, 
+                                   bufsize=defaultBufferSize)
+        except Exception, e:
+            raise BackupError("PgDumper: Database dump command failed.",
+                              "Command: %s" % ' '.join(args),
+                              "Error Message: %s" % str(e))
+        errdata = cmd.communicate(None)[1]
+        if cmd.returncode == 0:
+            logger.info("PgDumper: Finished dump of PostgreSQL Database: %s"
+                        "  Backup: %s", db, dump_path)
+        else:
+            raise BackupError("PgDumper: Dump of database %s failed "
+                              "with error code %s." % (db, cmd.returncode),
+                              *errdata.splitlines())
     
-    def pgDumpAllDatabases(self):
-        pass
+    def pgDumpDatabases(self):
+        if self._conf['db_list'] is None:
+            try:
+                pg = PgInfo()
+                self._conf['db_list'] = pg.getDatabases()
+                del pg
+            except Exception, e:
+                raise BackupError("PgDumper: Connection to PostgreSQL Server "
+                                  "for querying database list failed.",
+                                  "Error Message: %s" % str(e))
+        try:
+            self._conf['db_list'].remove('template0')
+        except ValueError:
+            pass
+        logger.info("PgDumper: Starting dump of %d PostgreSQL Databases.",
+                    len(self._conf['db_list']))
+        for db in self._conf['db_list']:
+            self.pgDumpDatabase(db)
+        logger.info("PgDumper: Finished dump of PostgreSQL Databases.")
 
     def pgDumpFull(self):
-        pass
+        self.pgDumpGlobals()
+        self.pgDumpDatabases()
 
     
 def pgDumpFull(job_conf):
     pg = PgDumper(**job_conf)
-    pg.pgDumpGlobals()
+    pg.pgDumpFull()
     
 backupMethodRegistry.register('pg_dump_full', pgDumpFull)
 
@@ -271,7 +311,7 @@ def main(argv=None):
         try:
             job_conf = jobs_conf.get(job_name)
             if job_conf:
-                logger.info("Start executing backup job: %s", job_name)
+                logger.info("Starting executing backup job: %s", job_name)
                 job = BackupJob(job_name, global_conf, job_conf)
                 job.run()
                 logger.info("Finished executing backup job: %s", job_name)
@@ -281,7 +321,7 @@ def main(argv=None):
         except BackupError, e:
             fatal = False
             if isinstance(e, BackupFatalConfigError):
-                logger.critical("Fatal configuration error. %s", job_name)
+                logger.critical("Fatal configuration error in job: %s", job_name)
                 fatal = True
             elif isinstance(e, BackupConfigError):
                 logger.error("Configuration error in backup job %s. %s", 
