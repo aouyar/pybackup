@@ -27,6 +27,10 @@ __status__ = "Development"
 defaultConfPaths = ['./pybackup.conf', '/etc/pybackup.conf']
 logLevel = logging.INFO
 
+# Global Default Settings
+defaultsGeneral = { 'cmd_gzip': 'gzip', 
+                   }
+
 # Logging Configuration
 logging.basicConfig()
 logger = logging.getLogger()
@@ -132,7 +136,6 @@ class BackupJob():
             self._runMethod(method, self._conf)
         else:
             raise BackupConfigError("Backup method not defined.")
-        
 
 
 class BackupMethodRegistry():
@@ -153,36 +156,37 @@ backupMethodRegistry = BackupMethodRegistry()
 
 
 
-defaultCmdGzip = 'gzip'
-defaultPgCmdDump = 'pg_dump'
-defaultPgCmdDumpAll = 'pg_dumpall'
-defaultPgFilenameDumpGlobals = 'pg_dump_globals.gz'
-defaultPgFilenameDumpDB = 'pg_dump_db_%s'
+
+
+
+
+defaultsPg = { 'cmd_pg_dump': 'pg_dump',
+               'cmd_pg_dumpall': 'pg_dumpall',
+               'filename_dump_globals': 'pg_dump_globals.gz',
+               'filename_dump_db_prefix': 'pg_dump_db_',
+               }
 
 defaultBufferSize=4096
 
 class PgDumper():
     
     def __init__(self, **kwargs):
-        self._cmdBackupPath = kwargs.get('backup_path')
-        if self._cmdBackupPath is None:
+        self._conf = {}
+        for k in ('backup_path',
+                  'cmd_pg_dump', 'cmd_pg_dumpall', 'cmd_gzip',
+                  'filename_dump_globals', 'filename_dump_db_prefix',
+                  'db_list',
+                  ):
+            self._conf[k] = (kwargs.get(k) or defaultsPg.get(k) 
+                             or defaultsGeneral.get(k))
+        if self._conf['backup_path'] is None:
             raise BackupEnvironmentError("Backup directory not defined.")
-        self._cmdDump = (kwargs.get('cmd_pg_dump') 
-                         or defaultPgCmdDump)
-        self._cmdDumpAll = (kwargs.get('cmd_pg_dumpall') 
-                            or defaultPgCmdDumpAll)
-        self._cmdGzip = (kwargs.get('cmd_gzip') 
-                            or defaultCmdGzip)
-        self._fileDumpGlobals = (kwargs.get('filename_dump_globals') 
-                                 or defaultPgFilenameDumpGlobals)
-        self._fileDumpDB = (kwargs.get('filename_dump_db') 
-                            or defaultPgFilenameDumpDB)
-        self._dblist = (kwargs.get('db_list') or None)
-    
+        
     def pgDumpGlobals(self):
-        dump_path = os.path.join(self._cmdBackupPath, self._fileDumpGlobals)
-        args1 = [self._cmdDumpAll, '-g']
-        args2 = [self._cmdGzip, '-c']
+        dump_path = os.path.join(self._conf['backup_path'], 
+                                 self._conf['filename_dump_globals'])
+        args1 = [self._conf['cmd_pg_dump_all'], '-g']
+        args2 = [self._conf['cmd_gzip'], '-c']
         logger.info("PgDumper: Start PostgreSQL Global Objects dump. "
                     "Backup: %s", dump_path)
         try:
