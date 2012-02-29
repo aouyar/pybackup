@@ -108,6 +108,12 @@ def parseConfFile(conf_paths):
     return (global_conf, jobs_conf)
 
 
+def initGlobals(global_conf):
+    umask = global_conf.get('umask')
+    if umask is not None:
+        os.umask(int(umask, 8))
+
+
 class BackupJob():
     
     def __init__(self, name, global_conf, job_conf):
@@ -188,13 +194,14 @@ defaultsPg = { 'job_name': 'PostgreSQL Backup',
 
 defaultBufferSize=4096
 
-class PgDumper():
+class PluginPostgreSQL():
     
     def __init__(self, **kwargs):
         self._conf = {}
         for k in ('job_name', 'backup_path',
                   'cmd_pg_dump', 'cmd_pg_dumpall', 'cmd_gzip',
                   'filename_dump_globals', 'filename_dump_db_prefix',
+                  'db_host', 'db_port', 'db_database', 'db_user', 'db_pass',
                   'db_list',
                   ):
             self._conf[k] = (kwargs.get(k) or defaultsPg.get(k) 
@@ -202,10 +209,24 @@ class PgDumper():
         if self._conf['backup_path'] is None:
             raise BackupEnvironmentError("Backup directory not defined.")
         
+        self._connArgs = []
+        for (opt, key) in (('-h', 'db_host'),
+                           ('-p', 'db_port'),
+                           ('-l', 'db_database'),
+                           ('-U', 'db_user')):
+            val = self._conf.get(key) 
+            if val is not None:
+                self._connArgs.extend([opt, val])
+        self._env = os.environ.copy()
+        db_pass = self._conf.get('db_pass')
+        if db_pass is not None:
+            self._env['PGPASSWORD'] = db_pass
+        
     def pgDumpGlobals(self):
         dump_path = os.path.join(self._conf['backup_path'], 
                                  self._conf['filename_dump_globals'])
         args1 = [self._conf['cmd_pg_dumpall'], '-g']
+        args1.extend(self._connArgs)
         args2 = [self._conf['cmd_gzip'], '-c']
         logger.info("Starting PostgreSQL Global Objects dump."
                     "  Backup: %s", dump_path)
@@ -213,7 +234,8 @@ class PgDumper():
             cmd1 = subprocess.Popen(args1, 
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE, 
-                                    bufsize=defaultBufferSize)
+                                    bufsize=defaultBufferSize,
+                                    env = self._env)
         except Exception, e:
             raise BackupError("Database dump command failed.",
                               "Command: %s" % ' '.join(args1),
@@ -253,13 +275,16 @@ class PgDumper():
         dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db_prefix'], 
                                         db)
         dump_path = os.path.join(self._conf['backup_path'], dump_filename)
-        args = [self._conf['cmd_pg_dump'], '-Fc', '-f', dump_path, db]
+        args = [self._conf['cmd_pg_dump'], '-Fc']
+        args.extend(self._connArgs)
+        args.extend(['-f', dump_path, db])
         logger.info("Starting dump of PostgreSQL Database: %s"
                     "  Backup: %s", db, dump_path)
         try:
             cmd = subprocess.Popen(args, 
                                    stderr=subprocess.PIPE, 
-                                   bufsize=defaultBufferSize)
+                                   bufsize=defaultBufferSize,
+                                   env = self._env)
         except Exception, e:
             raise BackupError("Database dump command failed.",
                               "Command: %s" % ' '.join(args),
@@ -276,7 +301,11 @@ class PgDumper():
     def pgDumpDatabases(self):
         if self._conf['db_list'] is None:
             try:
-                pg = PgInfo()
+                pg = PgInfo(host=self._conf.get('db_host'),
+                            port=self._conf.get('db_port'),
+                            database=self._conf.get('db_database'),
+                            user=self._conf.get('db_user'),
+                            password=self._conf.get('db_pass'))
                 self._conf['db_list'] = pg.getDatabases()
                 del pg
             except Exception, e:
@@ -299,7 +328,7 @@ class PgDumper():
 
     
 def pgDumpFull(job_conf):
-    pg = PgDumper(**job_conf)
+    pg = PluginPostgreSQL(**job_conf)
     pg.pgDumpFull()
     
 backupMethodRegistry.register('pg_dump_full', pgDumpFull)
@@ -326,6 +355,7 @@ def main(argv=None):
     if len(args) == 0:
         logger.warning("No backup job selected for execution.")
         return 1
+    initGlobals(global_conf)
     for job_name in args:
         logContext.setJob(job_name)
         try:
