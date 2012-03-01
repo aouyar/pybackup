@@ -7,7 +7,7 @@ import subprocess
 from pybackup import defaults
 from pybackup import errors
 from pybackup.logmgr import logger
-from pybackup.plugins import backupPluginRegistry
+from pybackup.plugins import BackupPluginBase, backupPluginRegistry
 from pysysinfo.postgresql import PgInfo
 
 
@@ -21,30 +21,23 @@ __email__ = "aouyar at gmail.com"
 __status__ = "Development"
 
 
-# Defaults
-defaultsPg = { 'job_name': 'PostgreSQL Backup',
+
+class PluginPostgreSQL(BackupPluginBase):
+    
+    _optList = ('job_name', 'backup_path',
+                'cmd_pg_dump', 'cmd_pg_dumpall', 'cmd_gzip',
+                'filename_dump_globals', 'filename_dump_db_prefix',
+                'db_host', 'db_port', 'db_database', 'db_user', 'db_password',
+                'db_list',)
+    _requiredOptList = ('backup_path',)
+    _defaults = { 'job_name': 'PostgreSQL Backup',
                'cmd_pg_dump': 'pg_dump',
                'cmd_pg_dumpall': 'pg_dumpall',
                'filename_dump_globals': 'pg_dump_globals.gz',
-               'filename_dump_db_prefix': 'pg_dump_db',
-               }
-
-
-class PluginPostgreSQL():
+               'filename_dump_db_prefix': 'pg_dump_db',}
     
     def __init__(self, **kwargs):
-        self._conf = {}
-        for k in ('job_name', 'backup_path',
-                  'cmd_pg_dump', 'cmd_pg_dumpall', 'cmd_gzip',
-                  'filename_dump_globals', 'filename_dump_db_prefix',
-                  'db_host', 'db_port', 'db_database', 'db_user', 'db_password',
-                  'db_list',
-                  ):
-            self._conf[k] = (kwargs.get(k) or defaultsPg.get(k) 
-                             or defaults.globalConf.get(k))
-        if self._conf['backup_path'] is None:
-            raise errors.BackupEnvironmentError("Backup directory not defined.")
-        
+        BackupPluginBase.__init__(self, **kwargs)
         self._connArgs = []
         for (opt, key) in (('-h', 'db_host'),
                            ('-p', 'db_port'),
