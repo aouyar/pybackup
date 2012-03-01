@@ -9,6 +9,7 @@ import ConfigParser
 import optparse
 import logging
 from datetime import date
+from pysysinfo.util import parse_value
 from pybackup import defaults
 from pybackup import errors
 from pybackup.logmgr import logger, logContext
@@ -35,6 +36,9 @@ def parseCmdline(argv=None):
                       dest='verbose', default=False, action='store_true')
     parser.add_option('-d', '--debug', help='Activate debugging mode.',
                       dest='debug', default=False, action='store_true')
+    parser.add_option('-a', '--all', 
+                      help='Run all jobs listed in configuration file.',
+                      dest='allJobs', default=False, action='store_true')
     if argv is None:
         return parser.parse_args()
     else:
@@ -158,14 +162,24 @@ def main(argv=None):
             raise
         else:
             return 1
-    if len(args) == 0:
+    if cmdopts.allJobs:
+        jobs = jobs_conf.keys()
+    elif len(args) > 0:
+        jobs = args
+    else:
         logger.warning("No backup job selected for execution.")
         return 1
     initGlobals(global_conf)
-    for job_name in args:
+    for job_name in jobs:
         logContext.setJob(job_name)
         try:
             job_conf = jobs_conf.get(job_name)
+            if job_conf.has_key('active'):
+                active = parse_value(job_conf['active'], True)
+                if not active:
+                    logger.warn("Backup job disabled by configuration.")
+                    continue
+                    del job_conf['active']
             if job_conf:
                 logger.info("Starting execution of backup job")
                 job = BackupJob(job_name, global_conf, job_conf)
