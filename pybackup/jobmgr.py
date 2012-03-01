@@ -99,9 +99,9 @@ class BackupJob():
         try:
             fp, pathname, description = imp.find_module(plugin, ['./plugins',])
             return imp.load_module(plugin, fp, pathname, description)
-        except ImportError:
+        except ImportError, e:
             raise errors.BackupConfigError("Failed loading backup plugin: %s"
-                                            % plugin)
+                                            % plugin, str(e))
         finally:
             if fp:
                 fp.close()

@@ -24,3 +24,9 @@ class BackupFatalConfigError(BackupConfigError):
 
 class BackupEnvironmentError(BackupError):
     pass
+
+class BackupCmdError(BackupError):
+    pass
+
+class BackupFileCreateError(BackupError):
+    pass

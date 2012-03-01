@@ -13,8 +13,5 @@ __email__ = "aouyar at gmail.com"
 __status__ = "Development"
 
 
-globalConf = {'cmd_compress': 'gzip', 
-              'suffix_compress': 'gz',}
-
-configPaths = ['./pybackup.conf', '/etc/pybackup.conf']
-bufferSize=4096
+def split_msg(msg):
+    return [line for line in msg.splitlines() if len(line.strip()) > 0]
