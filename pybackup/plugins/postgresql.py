@@ -155,9 +155,10 @@ class PluginPostgreSQL(BackupPluginBase):
         self.pgDumpGlobals()
         self.pgDumpDatabases()
         
-
-def pgDumpFull(job_conf):
-    pg = PluginPostgreSQL(**job_conf)
-    pg.pgDumpFull()
     
-backupPluginRegistry.register('pg_dump_full', pgDumpFull)
+backupPluginRegistry.register('pg_dump_full', 'pgDumpFull', 
+                              PluginPostgreSQL)
+backupPluginRegistry.register('pg_dump_globals', 'pgDumpGlobals', 
+                              PluginPostgreSQL)
+backupPluginRegistry.register('pg_dump_databases', 'pgDumpDatabases', 
+                              PluginPostgreSQL)
