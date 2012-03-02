@@ -174,13 +174,12 @@ def main(argv=None):
         logContext.setJob(job_name)
         try:
             job_conf = jobs_conf.get(job_name)
-            if job_conf.has_key('active'):
-                active = parse_value(job_conf['active'], True)
-                if not active:
-                    logger.warn("Backup job disabled by configuration.")
-                    continue
-                    del job_conf['active']
             if job_conf:
+                if job_conf.has_key('active'):
+                    active = parse_value(job_conf['active'], True)
+                    if not active:
+                        logger.warn("Backup job disabled by configuration.")
+                        continue
                 logger.info("Starting execution of backup job")
                 job = BackupJob(job_name, global_conf, job_conf)
                 job.run()
