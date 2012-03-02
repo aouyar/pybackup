@@ -14,16 +14,22 @@ __status__ = "Development"
 
 
 class BackupError(Exception):
-    pass
+    desc = 'Error in execution of backup job.'
+    fatal = False
 
 class BackupConfigError(BackupError):
-    pass
+    desc = 'Configuration error in backup job.'
 
 class BackupFatalConfigError(BackupConfigError):
-    pass
+    desc = 'Fatal configuration error in backup job.'
+    fatal = True
 
 class BackupEnvironmentError(BackupError):
-    pass
+    desc = 'Error in backup job environment.'
+
+class BackupFatalEnvironmentError(BackupEnvironmentError):
+    desc = 'Fatal error in backup job environment.'
+    fatal = True
 
 class BackupCmdError(BackupError):
     pass

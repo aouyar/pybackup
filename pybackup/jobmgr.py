@@ -4,13 +4,13 @@ import imp
 import sys
 import os
 import platform
-import pwd
 import ConfigParser
 import optparse
 import logging
 from datetime import date
 from pybackup import defaults
 from pybackup import errors
+from pybackup import utils
 from pybackup.logmgr import logger, logContext
 from pybackup.plugins import backupPluginRegistry
 from pysysinfo.util import parse_value
@@ -66,6 +66,10 @@ def parseConfFile(conf_paths):
 
 
 def initGlobals(global_conf):
+    user = global_conf.get('user')
+    if user is not None and not utils.checkUser(user):
+        raise errors.BackupFatalEnvironmentError("Backup script must be run "
+                                                 "as user %s." % user)
     umask = global_conf.get('umask')
     if umask is not None:
         os.umask(int(umask, 8))
@@ -89,9 +93,6 @@ class BackupJob():
             raise errors.BackupFatalConfigError("Backup root directory "
                                                 "(backup_root) not defined.")
 
-    def _checkUser(self, user):
-        return pwd.getpwnam(user).pw_uid == os.getuid()
-    
     def _loadPlugin(self, plugin):
         # Fast path: see if the module has already been imported.
         try:
@@ -128,14 +129,14 @@ class BackupJob():
                                            "Backup method %s not registered." 
                                            % method)
     def run(self):
+        user = self._conf.get('user') or None
+        if user is not None and not utils.checkUser(user):
+            raise errors.BackupEnvironmentError("Backup job must be run as user %s." 
+                                                % user)
         plugin = self._conf.get('plugin')
         if plugin is not None:
             self._loadPlugin(plugin)
         logger.debug("Backup plugin loaded: %s" % plugin)
-        user = self._conf.get('user') or None
-        if user is not None and not self._checkUser(user):
-            raise errors.BackupEnvironmentError("Backup job must be run as user %s." 
-                                                % user)
         self._initBackupDir(self._conf['backup_path'])
         method = self._conf.get('method')
         if method is not None:
@@ -168,10 +169,22 @@ def main(argv=None):
     else:
         logger.warning("No backup job selected for execution.")
         return 1
-    initGlobals(global_conf)
+    try:
+        initGlobals(global_conf)
+    except errors.BackupError, e:
+        if e.fatal:
+            logger.critical(e.desc)
+        else:
+            logger.error(e.desc)
+        for line in e:
+            logger.error("  %s" , line)
+        if trace_errors:
+            raise
+        elif e.fatal:
+            return 1
     for job_name in jobs:
-        logContext.setJob(job_name)
         try:
+            logContext.setJob(job_name)
             job_conf = jobs_conf.get(job_name)
             if job_conf:
                 if job_conf.has_key('active'):
@@ -186,24 +199,15 @@ def main(argv=None):
             else:
                 logger.error("No configuration found for backup job.")
         except errors.BackupError, e:
-            fatal = False
-            if isinstance(e, errors.BackupFatalConfigError):
-                logger.critical("Fatal configuration error in job.")
-                fatal = True
-            elif isinstance(e, errors.BackupConfigError):
-                logger.error("Configuration error in backup job")
-                fatal = False
-            elif isinstance(e, errors.BackupEnvironmentError):
-                logger.error("Error in backup job environment.")
-                fatal = False
-            else:     
-                logger.error("Error in execution of backup job.")
-                fatal = False
+            if e.fatal:
+                logger.critical(e.desc)
+            else:
+                logger.error(e.desc)
             for line in e:
                 logger.error("  %s" , line)
             if trace_errors:
                 raise
-            elif fatal:
+            elif e.fatal:
                 return 1
                 
 

@@ -2,6 +2,8 @@
 
 """
 
+import os
+import pwd
 
 __author__ = "Ali Onur Uyar"
 __copyright__ = "Copyright 2011, Ali Onur Uyar"
@@ -15,3 +17,7 @@ __status__ = "Development"
 
 def split_msg(msg):
     return [line for line in msg.splitlines() if len(line.strip()) > 0]
+
+def checkUser(user):
+    return pwd.getpwnam(user).pw_uid == os.getuid()
+    
