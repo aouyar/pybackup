@@ -9,12 +9,11 @@ import ConfigParser
 import optparse
 import logging
 from datetime import date
-from pysysinfo.util import parse_value
 from pybackup import defaults
 from pybackup import errors
 from pybackup.logmgr import logger, logContext
 from pybackup.plugins import backupPluginRegistry
-
+from pysysinfo.util import parse_value
 
 __author__ = "Ali Onur Uyar"
 __copyright__ = "Copyright 2011, Ali Onur Uyar"

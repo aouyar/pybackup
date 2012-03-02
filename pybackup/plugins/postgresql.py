@@ -28,11 +28,10 @@ class PluginPostgreSQL(BackupPluginBase):
                 'db_host', 'db_port', 'db_database', 'db_user', 'db_password',
                 'db_list',)
     _reqOptList = ()
-    _defaults = { 'job_name': 'PostgreSQL Backup',
-               'cmd_pg_dump': 'pg_dump',
-               'cmd_pg_dumpall': 'pg_dumpall',
-               'filename_dump_globals': 'pg_dump_globals',
-               'filename_dump_db_prefix': 'pg_dump_db',}
+    _defaults = {'job_name': 'PostgreSQL Backup',
+                 'cmd_pg_dump': 'pg_dump','cmd_pg_dumpall': 'pg_dumpall',
+                 'filename_dump_globals': 'pg_dump_globals',
+                 'filename_dump_db_prefix': 'pg_dump_db',}
     
     def __init__(self, **kwargs):
         BackupPluginBase.__init__(self, **kwargs)

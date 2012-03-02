@@ -80,16 +80,18 @@ backupPluginRegistry = BackupPluginRegistry()
 class BackupPluginBase():
     
     _baseOptList = ('job_name', 'backup_path',
-                    'cmd_compress', 'suffix_compress',)
+                    'cmd_compress', 'suffix_compress',
+                    'cmd_tar', 'suffix_tar', 'suffix_tgz')
     _optList = ()
     _baseReqOptList = ('job_name', 'backup_path',
-                       'cmd_compress', 'suffix_compress',)
+                       'cmd_compress', 'suffix_compress',
+                       'cmd_tar', 'suffix_tar', 'suffix_tgz')
     _reqOptList = ()
     _defaults = {}
     
     def __init__(self, **kwargs):
         self._conf = {}
-        self._methodDict = {}
+        self._env = None
         for k in self._baseOptList + self._optList:
             self._conf[k] = (kwargs.get(k) or self._defaults.get(k) 
                              or defaults.globalConf.get(k)) 

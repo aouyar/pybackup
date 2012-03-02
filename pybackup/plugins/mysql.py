@@ -28,9 +28,9 @@ class PluginMySQL(BackupPluginBase):
                 'db_host', 'db_port', 'db_user', 'db_password',
                 'db_list',)
     _reqOptList = ()
-    _defaults = { 'job_name': 'MySQL Backup',
-               'cmd_mysqldump': 'mysqldump',
-               'filename_dump_db_prefix': 'mysql_dump',}
+    _defaults = {'job_name': 'MySQL Backup',
+                 'cmd_mysqldump': 'mysqldump',
+                 'filename_dump_db_prefix': 'mysql_dump',}
     
     def __init__(self, **kwargs):
         BackupPluginBase.__init__(self, **kwargs)
@@ -102,7 +102,5 @@ class PluginMySQL(BackupPluginBase):
         self.dumpDatabases()
         
     
-backupPluginRegistry.register('mysql_dump_full', 'dumpFull', 
-                              PluginMySQL)
-backupPluginRegistry.register('mysql_dump_databases', 'dumpDatabases', 
-                              PluginMySQL)
+backupPluginRegistry.register('mysql_dump_full', 'dumpFull', PluginMySQL)
+backupPluginRegistry.register('mysql_dump_databases', 'dumpDatabases', PluginMySQL)

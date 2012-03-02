@@ -14,7 +14,10 @@ __status__ = "Development"
 
 
 globalConf = {'cmd_compress': 'gzip', 
-              'suffix_compress': 'gz',}
+              'suffix_compress': 'gz',
+              'cmd_tar': 'tar',
+              'suffix_tar': 'tar',
+              'suffix_tgz': 'tgz',}
 
 configPaths = ['./pybackup.conf', '/etc/pybackup.conf']
 bufferSize=4096
