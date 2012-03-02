@@ -26,7 +26,7 @@ class PluginArchive(BackupPluginBase):
     
     _optList = ('cmd_tar', 'filename_archive', 'path_list', 'base_dir', 
                 'backup_index', 'suffix_list',
-                'exclude_patterns', 'exclude_file')
+                'exclude_patterns', 'exclude_patterns_file')
     _reqOptList = ('filename_archive', 'path_list')
     _defaults = {'job_name': 'Archive Backup',
                  'backup_index': 'yes', 'suffix_list': 'list'}
@@ -47,7 +47,12 @@ class PluginArchive(BackupPluginBase):
                                       self._conf['suffix_list'])
         archive_path = os.path.join(self._conf['backup_path'], archive_filename)
         index_path = os.path.join(self._conf['backup_path'], index_filename)
-        path_list = re.split('\s*,\s*|\s+', self._conf.get('path_list'))
+        path_list = re.split('\s*,\s*|\s+', self._conf['path_list'])
+        if self._conf['exclude_patterns'] is not None:
+            exclude_patterns = re.split('\s*,\s*|\s+', 
+                                        self._conf['exclude_patterns'])
+        else:
+            exclude_patterns = None
         logger.info("Starting backup of paths: %s", ', '.join(path_list))
         args = [self._conf['cmd_tar'],]
         base_dir = self._conf['base_dir']
@@ -60,6 +65,16 @@ class PluginArchive(BackupPluginBase):
         backup_index = parse_value(self._conf['backup_index'], True)
         if backup_index:
             args.append('-v')
+        if exclude_patterns is not None:
+            for pattern in exclude_patterns:
+                args.append("--exclude=%s" % pattern)
+        exclude_patterns_file = self._conf['exclude_patterns_file']
+        if exclude_patterns_file is not None:
+            if os.path.isfile(exclude_patterns_file):
+                args.append("--exclude-from=%s" % exclude_patterns_file)
+        else:
+            raise errors.BackupConfigError("Invalid exclude patterns files: %s"
+                                           % exclude_patterns_file)
         args.extend(['-zcf', archive_path])
         self._checkSrcPaths(path_list)
         args.extend(path_list)
