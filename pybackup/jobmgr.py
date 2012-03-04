@@ -85,7 +85,6 @@ def initGlobals(global_conf):
             raise errors.BackupFatalConfigError("Backup root directory "
                                                 "(backup_root) not defined.")
     
-        
 def initLogging(global_conf, verbose=False, debug=False):
     console_level = None
     logfile_level = None
@@ -113,7 +112,26 @@ def initLogging(global_conf, verbose=False, debug=False):
     if console_level is not None:
         logmgr.configConsole(console_level)
     if global_conf is not None:
-        pass      
+        backup_path = global_conf.get('backup_path')
+        if backup_path is not None:
+            if not os.path.isdir(backup_path):
+                try:
+                    os.makedirs(backup_path)
+                except:
+                    raise errors.BackupEnvironmentError("Creation of backup base "
+                                                        "directory (%s) failed."
+                                                        % backup_path)
+                logger.debug("Backup base directory (%s) created.", backup_path)
+            filename_logfile = (global_conf.get('filename_logfile')
+                                or defaults.globalConf.get('filename_logfile'))
+            if filename_logfile is None:
+                raise errors.BackupFatalConfigError("Backup log filename "
+                                                "(filename_logfile) not defined.")
+            log_path = os.path.join(backup_path, filename_logfile)
+            logmgr.configLogFile(logfile_level, log_path)
+        else:
+            raise errors.BackupFatalConfigError("Backup base directory "
+                                                "(backup_path) not defined.")
     
 
 class BackupJob():
@@ -153,9 +171,8 @@ class BackupJob():
             except:
                 raise errors.BackupEnvironmentError("Creation of backup job "
                                                     "directory (%s) failed."
-                                                    % self._conf['job_path'])
-            logger.debug("Backup directory (%s) created.", 
-                         self._conf['job_path'])
+                                                    % path)
+            logger.debug("Backup job directory (%s) created.", path)
     
     def _runMethod(self, method, conf):   
         if backupPluginRegistry.hasMethod(method):

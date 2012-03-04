@@ -15,6 +15,7 @@ __status__ = "Development"
 
 globalConf = {'console_loglevel': 'info',
               'logfile_loglevel': 'info',
+              'filename_logfile': 'backup.log',
               'cmd_compress': 'gzip', 
               'suffix_compress': 'gz',
               'cmd_tar': 'tar',

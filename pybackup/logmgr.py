@@ -39,6 +39,7 @@ class LogManager():
     
     def __init__(self):
         self._logger = logging.getLogger()
+        self._logger.setLevel(defaultLogLevel)
         self._formatter = logging.Formatter(defaultLogFormat, defaultDateFormat)
         self._handlerConsole = logging.StreamHandler()
         self._handlerConsole.setLevel(defaultLogLevel)
@@ -66,7 +67,7 @@ class LogManager():
             self._minLevel = level
             self._logger.setLevel(level)
         if self._handlerLogFile is None and path is not None:
-            self._handlerLogFile = logging.FileHandler()
+            self._handlerLogFile = logging.FileHandler(path)
             self._handlerLogFile.setLevel(level)
             self._handlerLogFile.setFormatter(self._formatter)
             self._logger.addHandler(self._handlerLogFile)
