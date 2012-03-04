@@ -5,7 +5,6 @@
 import os
 import types
 import subprocess
-from pybackup import defaults
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger
@@ -19,6 +18,9 @@ __maintainer__ = "Ali Onur Uyar"
 __email__ = "aouyar at gmail.com"
 __status__ = "Development"
 
+
+# Defaults
+bufferSize = 8192
 
 
 class BackupPluginRegistry():
@@ -93,8 +95,7 @@ class BackupPluginBase():
         self._conf = {}
         self._env = None
         for k in self._baseOptList + self._optList:
-            self._conf[k] = (kwargs.get(k) or self._defaults.get(k) 
-                             or defaults.globalConf.get(k)) 
+            self._conf[k] = (kwargs.get(k) or self._defaults.get(k)) 
         for k in self._baseReqOptList + self._reqOptList:
             if self._conf[k] is None:
                 raise errors.BackupConfigError("Mandatory configuration "
@@ -115,7 +116,7 @@ class BackupPluginBase():
                 cmd = subprocess.Popen(args, 
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, 
-                                       bufsize=defaults.bufferSize,
+                                       bufsize=bufferSize,
                                        env = self._env)
             except Exception, e:
                 raise errors.BackupCmdError("Backup command execution failed.",
@@ -127,7 +128,7 @@ class BackupPluginBase():
                                             stdin=cmd.stdout,
                                             stdout=out_fp,
                                             stderr=subprocess.PIPE,
-                                            bufsize=defaults.bufferSize)
+                                            bufsize=bufferSize)
                 cmd.stdout.close()
             except Exception, e:
                 raise errors.BackupCmdError("Backup compression command failed.",
@@ -148,7 +149,7 @@ class BackupPluginBase():
                 cmd = subprocess.Popen(args,
                                        stdout=(out_fp or subprocess.PIPE), 
                                        stderr=subprocess.PIPE, 
-                                       bufsize=defaults.bufferSize,
+                                       bufsize=bufferSize,
                                        env = self._env)
             except Exception, e:
                 raise errors.BackupCmdError("Backup command execution failed.",

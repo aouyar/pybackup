@@ -16,6 +16,11 @@ __status__ = "Development"
 class BackupError(Exception):
     desc = 'Error in execution of backup job.'
     fatal = False
+    trace = False
+    
+class BackupStartupError(BackupError):
+    desc = "Fatal error on startup."
+    fatal = True
 
 class BackupConfigError(BackupError):
     desc = 'Configuration error in backup job.'
@@ -36,3 +41,11 @@ class BackupCmdError(BackupError):
 
 class BackupFileCreateError(BackupError):
     pass
+
+
+def set_trace():
+    BackupError.trace = True
+    
+def unset_trace():
+    BackupError.trace = False
+    
