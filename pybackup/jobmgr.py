@@ -11,7 +11,7 @@ from datetime import date
 from pybackup import defaults
 from pybackup import errors
 from pybackup import utils
-from pybackup.logmgr import logger, logContext
+from pybackup.logmgr import logger, logmgr
 from pybackup.plugins import backupPluginRegistry
 from pysysinfo.util import parse_value
 
@@ -35,6 +35,8 @@ def parseCmdline(argv=None):
                       dest='verbose', default=False, action='store_true')
     parser.add_option('-d', '--debug', help='Activate debugging mode.',
                       dest='debug', default=False, action='store_true')
+    parser.add_option('-t', '--trace', help='Activate tracing of errors.',
+                      dest='trace', default=False, action='store_true')
     parser.add_option('-a', '--all', 
                       help='Run all jobs listed in configuration file.',
                       dest='allJobs', default=False, action='store_true')
@@ -73,7 +75,46 @@ def initGlobals(global_conf):
     umask = global_conf.get('umask')
     if umask is not None:
         os.umask(int(umask, 8))
+    if global_conf.has_key('backup_root'):
+        backup_path_elem = [global_conf['backup_root'], ]
+        if global_conf.has_key('hostname_dir'):
+            backup_path_elem.append(str(platform.node()).split('.')[0])
+            backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
+            global_conf['backup_path'] = os.path.join(*backup_path_elem)
+        else:
+            raise errors.BackupFatalConfigError("Backup root directory "
+                                                "(backup_root) not defined.")
+    
         
+def initLogging(global_conf, verbose=False, debug=False):
+    console_level = None
+    logfile_level = None
+    if debug:
+        console_level = logging.DEBUG
+        logfile_level = logging.DEBUG
+    elif verbose:
+        console_level = logging.INFO
+        logfile_level = logging.INFO
+    elif global_conf is not None:
+        console_level = logmgr.getLogLevel( 
+                            global_conf.get('console_loglevel') or 
+                            defaults.globalConf.get('console_loglevel'))
+        if console_level is None:
+            raise errors.BackupFatalConfigError("Invalid log level set in "
+                                                "configuration file for option: "
+                                                "console_loglevel")
+        logfile_level = logmgr.getLogLevel( 
+                            global_conf.get('logfile_loglevel') or 
+                            defaults.globalConf.get('logfile_loglevel'))
+        if logfile_level is None:
+            raise errors.BackupFatalConfigError("Invalid log level set in "
+                                                "configuration file for option: "
+                                                "logfile_loglevel")
+    if console_level is not None:
+        logmgr.configConsole(console_level)
+    if global_conf is not None:
+        pass      
+    
 
 class BackupJob():
     
@@ -82,16 +123,11 @@ class BackupJob():
         self._conf = {'job_name': name}
         self._conf.update(global_conf)
         self._conf.update(job_conf)
-        if self._conf.has_key('backup_root'):
-            backup_path_elem = [self._conf['backup_root'], ]
-            if self._conf.has_key('hostname_dir'):
-                backup_path_elem.append(str(platform.node()).split('.')[0])
-            backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
-            backup_path_elem.append(name)
-            self._conf['backup_path'] = os.path.join(*backup_path_elem)
+        if self._conf.has_key('backup_path'):
+            self._conf['job_path'] = os.path.join(self._conf['backup_path'], name)
         else:
-            raise errors.BackupFatalConfigError("Backup root directory "
-                                                "(backup_root) not defined.")
+            raise errors.BackupFatalConfigError("Backup base directory "
+                                                "(backup_path) not defined.")
 
     def _loadPlugin(self, plugin):
         # Fast path: see if the module has already been imported.
@@ -115,11 +151,11 @@ class BackupJob():
             try:
                 os.makedirs(path)
             except:
-                raise errors.BackupEnvironmentError("Creation of backup directory "
-                                                    " (%s) failed."
-                                                    % self._conf['backup_path'])
+                raise errors.BackupEnvironmentError("Creation of backup job "
+                                                    "directory (%s) failed."
+                                                    % self._conf['job_path'])
             logger.debug("Backup directory (%s) created.", 
-                         self._conf['backup_path'])
+                         self._conf['job_path'])
     
     def _runMethod(self, method, conf):   
         if backupPluginRegistry.hasMethod(method):
@@ -137,7 +173,7 @@ class BackupJob():
         if plugin is not None:
             self._loadPlugin(plugin)
         logger.debug("Backup plugin loaded: %s" % plugin)
-        self._initBackupDir(self._conf['backup_path'])
+        self._initBackupDir(self._conf['job_path'])
         method = self._conf.get('method')
         if method is not None:
             self._runMethod(method, self._conf)
@@ -147,9 +183,8 @@ class BackupJob():
     
 def main(argv=None):
     (cmdopts, args) = parseCmdline(argv)
-    if cmdopts.debug or cmdopts.verbose:
-        logger.setLevel(logging.DEBUG)
-    trace_errors = cmdopts.debug
+    initLogging(None, cmdopts.verbose, cmdopts.debug)
+    trace_errors = cmdopts.trace
     if cmdopts.confPath is not None:
         conf_path = cmdopts.confPath
     else:
@@ -171,6 +206,7 @@ def main(argv=None):
         return 1
     try:
         initGlobals(global_conf)
+        initLogging(global_conf, cmdopts.verbose, cmdopts.debug)
     except errors.BackupError, e:
         if e.fatal:
             logger.critical(e.desc)
@@ -184,13 +220,13 @@ def main(argv=None):
             return 1
     for job_name in jobs:
         try:
-            logContext.setJob(job_name)
+            logmgr.setContext(job_name)
             job_conf = jobs_conf.get(job_name)
             if job_conf:
                 if job_conf.has_key('active'):
                     active = parse_value(job_conf['active'], True)
                     if not active:
-                        logger.warn("Backup job disabled by configuration.")
+                        logger.info("Backup job disabled by configuration.")
                         continue
                 logger.info("Starting execution of backup job")
                 job = BackupJob(job_name, global_conf, job_conf)

@@ -49,7 +49,7 @@ class PluginPostgreSQL(BackupPluginBase):
             self._env['PGPASSWORD'] = db_password
             
     def dumpGlobals(self):
-        dump_path = os.path.join(self._conf['backup_path'],
+        dump_path = os.path.join(self._conf['job_path'],
                                  "%s.%s" % (self._conf['filename_dump_globals'],
                                             self._conf['suffix_compress']))
         args = [self._conf['cmd_pg_dumpall'], '-w', '-g']
@@ -68,7 +68,7 @@ class PluginPostgreSQL(BackupPluginBase):
     def dumpDatabase(self, db):
         dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db_prefix'], 
                                         db)
-        dump_path = os.path.join(self._conf['backup_path'], dump_filename)
+        dump_path = os.path.join(self._conf['job_path'], dump_filename)
         args = [self._conf['cmd_pg_dump'], '-w', '-Fc']
         args.extend(self._connArgs)
         args.extend(['-f', dump_path, db])

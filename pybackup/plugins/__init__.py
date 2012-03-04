@@ -79,11 +79,11 @@ backupPluginRegistry = BackupPluginRegistry()
 
 class BackupPluginBase():
     
-    _baseOptList = ('job_name', 'backup_path',
+    _baseOptList = ('job_name', 'job_path', 'backup_path',
                     'cmd_compress', 'suffix_compress',
                     'cmd_tar', 'suffix_tar', 'suffix_tgz')
     _optList = ()
-    _baseReqOptList = ('job_name', 'backup_path',
+    _baseReqOptList = ('job_name', 'job_path', 'backup_path',
                        'cmd_compress', 'suffix_compress',
                        'cmd_tar', 'suffix_tar', 'suffix_tgz')
     _reqOptList = ()

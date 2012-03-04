@@ -13,7 +13,9 @@ __email__ = "aouyar at gmail.com"
 __status__ = "Development"
 
 
-globalConf = {'cmd_compress': 'gzip', 
+globalConf = {'console_loglevel': 'info',
+              'logfile_loglevel': 'info',
+              'cmd_compress': 'gzip', 
               'suffix_compress': 'gz',
               'cmd_tar': 'tar',
               'suffix_tar': 'tar',

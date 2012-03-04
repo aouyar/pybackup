@@ -56,7 +56,7 @@ class PluginMySQL(BackupPluginBase):
         dump_filename = "%s_%s_%s.dump.%s" % (self._conf['filename_dump_db_prefix'], 
                                         db, dump_type,
                                         self._conf['suffix_compress'])
-        dump_path = os.path.join(self._conf['backup_path'], dump_filename)
+        dump_path = os.path.join(self._conf['job_path'], dump_filename)
         args = [self._conf['cmd_mysqldump'],]
         args.extend(self._connArgs)
         if db == 'information_schema':

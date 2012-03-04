@@ -45,8 +45,8 @@ class PluginArchive(BackupPluginBase):
                                       self._conf['suffix_tgz'])
         index_filename = "%s.%s" % (self._conf['filename_archive'], 
                                       self._conf['suffix_list'])
-        archive_path = os.path.join(self._conf['backup_path'], archive_filename)
-        index_path = os.path.join(self._conf['backup_path'], index_filename)
+        archive_path = os.path.join(self._conf['job_path'], archive_filename)
+        index_path = os.path.join(self._conf['job_path'], index_filename)
         path_list = re.split('\s*,\s*|\s+', self._conf['path_list'])
         if self._conf['exclude_patterns'] is not None:
             exclude_patterns = re.split('\s*,\s*|\s+', 
@@ -72,9 +72,9 @@ class PluginArchive(BackupPluginBase):
         if exclude_patterns_file is not None:
             if os.path.isfile(exclude_patterns_file):
                 args.append("--exclude-from=%s" % exclude_patterns_file)
-        else:
-            raise errors.BackupConfigError("Invalid exclude patterns files: %s"
-                                           % exclude_patterns_file)
+            else:
+                raise errors.BackupConfigError("Invalid exclude patterns file: %s"
+                                               % exclude_patterns_file)
         args.extend(['-zcf', archive_path])
         self._checkSrcPaths(path_list)
         args.extend(path_list)

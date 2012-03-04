@@ -21,25 +21,69 @@ defaultLogFormat = '%(asctime)s:%(job)s:%(levelname)-8s %(message)s'
 defaultDateFormat = '%Y-%m-%d %H:%M:%S'
 
 
-# Logging Configuration
-logging.basicConfig(format=defaultLogFormat,
-                    datefmt=defaultDateFormat)
-logger = logging.getLogger()
-logger.setLevel(defaultLogLevel)
-
-
 class LogContext(logging.Filter):
     
-    def __init__(self, job_name):
-        self._jobName = job_name
+    def __init__(self, context):
+        self._context = context
         logging.Filter.__init__(self)
     
-    def setJob(self, job_name):
-        self._jobName = job_name
+    def setContext(self, context):
+        self._context = context
     
     def filter(self, record):
-        record.job = self._jobName
+        record.job = self._context
         return True
+
+
+class LogManager():
+    
+    def __init__(self):
+        self._logger = logging.getLogger()
+        self._formatter = logging.Formatter(defaultLogFormat, defaultDateFormat)
+        self._handlerConsole = logging.StreamHandler()
+        self._handlerConsole.setLevel(defaultLogLevel)
+        self._handlerConsole.setFormatter(self._formatter)
+        self._logger.addHandler(self._handlerConsole)
+        self._handlerLogFile = None
+        self._logContext = LogContext('INIT')
+        self._logger.addFilter(self._logContext)
+        self._minLevel = defaultLogLevel
         
-logContext = LogContext('INIT')
-logger.addFilter(logContext)
+    def getLogLevel(self, level_name):
+        return logging._levelNames.get(str(level_name).upper())
+        
+    def setContext(self, context):
+        self._logContext.setContext(context)
+    
+    def configConsole(self, level):
+        if level < self._minLevel:
+            self._minLevel = level
+            self._logger.setLevel(level)
+        self._handlerConsole.setLevel(level)
+        
+    def configLogFile(self, level, path=None):
+        if level < self._minLevel:
+            self._minLevel = level
+            self._logger.setLevel(level)
+        if self._handlerLogFile is None and path is not None:
+            self._handlerLogFile = logging.FileHandler()
+            self._handlerLogFile.setLevel(level)
+            self._handlerLogFile.setFormatter(self._formatter)
+            self._logger.addHandler(self._handlerLogFile)
+        elif self._handlerLogFile is not None:
+            self._handlerLogFile.setLevel(level)
+            
+    
+   
+
+# Initialize Logger
+logmgr = LogManager()
+logger = logging.getLogger()
+
+
+
+
+
+
+
+        
