@@ -23,18 +23,20 @@ __status__ = "Development"
 
 class PluginPostgreSQL(BackupPluginBase):
     
-    _optList = ('cmd_pg_dump', 'cmd_pg_dumpall', 
-                'filename_dump_globals', 'filename_dump_db_prefix',
-                'db_host', 'db_port', 'db_database', 'db_user', 'db_password',
-                'db_list',)
-    _reqOptList = ()
-    _defaults = {'job_name': 'PostgreSQL Backup',
-                 'cmd_pg_dump': 'pg_dump','cmd_pg_dumpall': 'pg_dumpall',
-                 'filename_dump_globals': 'pg_dump_globals',
-                 'filename_dump_db_prefix': 'pg_dump_db',}
+    _extOpts = {'filename_dump_globals': '', 
+                'filename_dump_db_prefix': '',
+                'db_host': 'PostgresSQL Database Server Name or IP.', 
+                'db_port': 'Postgres Database Server Port.', 
+                'db_user': 'Postgres Database Server User.', 
+                'db_password': 'Postgres Database Server Password.',
+                'db_list': 'List of databases. (All databases by default.)',}
+    _extReqOptList = ()
+    _extDefaults = {'cmd_pg_dump': 'pg_dump','cmd_pg_dumpall': 'pg_dumpall',
+                    'filename_dump_globals': 'pg_dump_globals',
+                    'filename_dump_db_prefix': 'pg_dump_db',}
     
-    def __init__(self, **kwargs):
-        BackupPluginBase.__init__(self, **kwargs)
+    def __init__(self, global_conf, job_conf):
+        BackupPluginBase.__init__(self, global_conf, job_conf)
         self._connArgs = []
         for (opt, key) in (('-h', 'db_host'),
                            ('-p', 'db_port'),
@@ -84,7 +86,7 @@ class PluginPostgreSQL(BackupPluginBase):
                                      *utils.split_msg(err))
     
     def dumpDatabases(self):
-        if self._conf['db_list'] is None:
+        if not self._conf.has_key('db_list'):
             try:
                 pg = PgInfo(host=self._conf.get('db_host'),
                             port=self._conf.get('db_port'),
@@ -112,9 +114,6 @@ class PluginPostgreSQL(BackupPluginBase):
         self.dumpDatabases()
         
     
-backupPluginRegistry.register('pg_dump_full', 'dumpFull', 
-                              PluginPostgreSQL)
-backupPluginRegistry.register('pg_dump_globals', 'dumpGlobals', 
-                              PluginPostgreSQL)
-backupPluginRegistry.register('pg_dump_databases', 'dumpDatabases', 
-                              PluginPostgreSQL)
+backupPluginRegistry.register('pg_dump_full', PluginPostgreSQL, 'dumpFull')
+backupPluginRegistry.register('pg_dump_globals', PluginPostgreSQL, 'dumpGlobals')
+backupPluginRegistry.register('pg_dump_databases', PluginPostgreSQL, 'dumpDatabases')

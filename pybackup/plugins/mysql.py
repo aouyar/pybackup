@@ -23,17 +23,18 @@ __status__ = "Development"
 
 class PluginMySQL(BackupPluginBase):
     
-    _optList = ('cmd_mysqldump',
-                'filename_dump_db_prefix',
-                'db_host', 'db_port', 'db_user', 'db_password',
-                'db_list',)
-    _reqOptList = ()
-    _defaults = {'job_name': 'MySQL Backup',
-                 'cmd_mysqldump': 'mysqldump',
-                 'filename_dump_db_prefix': 'mysql_dump',}
+    _extOpts = {'filename_dump_db_prefix': 'Filename for MySQL dump files.',
+                'db_host': 'MySQL Database Server Name or IP.', 
+                'db_port': 'MySQL Database Server Port.', 
+                'db_user': 'MySQL Database Server User.', 
+                'db_password': 'MySQL Database Server Password.',
+                'db_list': 'List of databases. (All databases by default.)',}
+    _extReqOptList = ()
+    _extDefaults = {'cmd_mysqldump': 'mysqldump',
+                    'filename_dump_db_prefix': 'mysql_dump',}
     
-    def __init__(self, **kwargs):
-        BackupPluginBase.__init__(self, **kwargs)
+    def __init__(self, global_conf, job_conf):
+        BackupPluginBase.__init__(self, global_conf, job_conf)
         self._connArgs = []
         for (opt, key) in (('-h', 'db_host'),
                            ('-P', 'db_port'),
@@ -79,7 +80,7 @@ class PluginMySQL(BackupPluginBase):
                                      *utils.split_msg(err))    
     
     def dumpDatabases(self):
-        if self._conf['db_list'] is None:
+        if not self._conf.has_key('db_list'):
             try:
                 my = MySQLinfo(host=self._conf.get('db_host'),
                                port=self._conf.get('db_port'),
@@ -102,5 +103,5 @@ class PluginMySQL(BackupPluginBase):
         self.dumpDatabases()
         
     
-backupPluginRegistry.register('mysql_dump_full', 'dumpFull', PluginMySQL)
-backupPluginRegistry.register('mysql_dump_databases', 'dumpDatabases', PluginMySQL)
+backupPluginRegistry.register('mysql_dump_full', PluginMySQL, 'dumpFull')
+backupPluginRegistry.register('mysql_dump_databases', PluginMySQL, 'dumpDatabases')

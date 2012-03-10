@@ -78,7 +78,7 @@ class JobManager():
                    'console_loglevel': 'Logging level for console.', 
                    'logfile_loglevel': 'Logging level for log file.',
                    'filename_logfile': 'Filename for log file.',}
-    _reqGlobalOpts = ['backup_root',]
+    _reqGlobalOpts = ('backup_root',)
     _globalConf = {'console_loglevel': 'info',
                    'logfile_loglevel': 'info',
                    'filename_logfile': 'backup.log',
@@ -204,15 +204,16 @@ class JobManager():
                     raise errors.BackupConfigError("No configuration found for "
                                                    "backup job.")
             except errors.BackupError, e:
-                if e.fatal:
-                    level = logging.CRITICAL
-                else:
-                    level = logging.ERROR
-                logger.log(level, e.desc)
-                for line in e:
-                    logger.log(level, "  %s" , line)
                 if e.trace or e.fatal:
                     raise
+                else:
+                    if e.fatal:
+                        level = logging.CRITICAL
+                    else:
+                        level = logging.ERROR
+                    logger.log(level, e.desc)
+                    for line in e:
+                        logger.log(level, "  %s" , line)
     
     def run(self):
         self.loggingInit()
@@ -227,18 +228,26 @@ class JobManager():
 
 class BackupJob():
     
+    _reqGlobalOpts = ('backup_path',)
+    _reqJobOpts = ('plugin', 'method',)
+    
     def __init__(self, name, global_conf, job_conf):
-        self._name = name
-        self._conf = {'job_name': name}
-        self._conf.update(global_conf)
-        self._conf.update(job_conf)
-        if self._conf.has_key('backup_path'):
-            self._conf['job_path'] = os.path.join(self._conf['backup_path'], name)
-        else:
-            raise errors.BackupFatalConfigError("Backup base directory "
-                                                "(backup_path) not defined.")
+        self._globalConf = global_conf
+        self._jobConf = {'job_name': name}
+        self._jobConf.update(job_conf)
+        for k in self._reqGlobalOpts:
+            if not self._globalConf.has_key(k):
+                raise errors.BackupConfigError("Required global configuration "
+                                                "option %s not defined." % k)
+        for k in self._reqJobOpts:
+            if not self._jobConf.has_key(k):
+                raise errors.BackupConfigError("Required job configuration "
+                                                "option %s not defined." % k)
+        self._jobConf['job_path'] = os.path.join(self._globalConf['backup_path'], 
+                                                 name)
 
-    def _loadPlugin(self, plugin):
+    def loadPlugin(self):
+        plugin = self._jobConf.get('plugin')
         # Fast path: see if the module has already been imported.
         try:
             return sys.modules[plugin]
@@ -254,8 +263,16 @@ class BackupJob():
         finally:
             if fp:
                 fp.close()
+        logger.debug("Backup plugin loaded: %s" % plugin)
     
-    def _initBackupDir(self, path):
+    def checkUser(self):
+        user = self._jobConf.get('user') or self._globalConf.get('user')
+        if user is not None and not utils.checkUser(user):
+            raise errors.BackupEnvironmentError("Backup job must be run as user %s." 
+                                                % user)
+    
+    def initJobDir(self):
+        path = self._jobConf['job_path']
         if not os.path.isdir(path):
             try:
                 os.makedirs(path)
@@ -265,28 +282,22 @@ class BackupJob():
                                                     % path)
             logger.debug("Backup job directory (%s) created.", path)
     
-    def _runMethod(self, method, conf):   
+    def runMethod(self):   
+        method = self._jobConf.get('method')
         if backupPluginRegistry.hasMethod(method):
-            backupPluginRegistry.runMethod(method, conf)
+            backupPluginRegistry.runMethod(method,
+                                           self._globalConf, 
+                                           self._jobConf)
         else:
             raise errors.BackupConfigError("Invalid backup method. "
                                            "Backup method %s not registered." 
                                            % method)
     def run(self):
-        user = self._conf.get('user') or None
-        if user is not None and not utils.checkUser(user):
-            raise errors.BackupEnvironmentError("Backup job must be run as user %s." 
-                                                % user)
-        plugin = self._conf.get('plugin')
-        if plugin is not None:
-            self._loadPlugin(plugin)
-        logger.debug("Backup plugin loaded: %s" % plugin)
-        self._initBackupDir(self._conf['job_path'])
-        method = self._conf.get('method')
-        if method is not None:
-            self._runMethod(method, self._conf)
-        else:
-            raise errors.BackupConfigError("Backup method not defined.")
+        self.checkUser()
+        self.loadPlugin()
+        self.initJobDir()
+        self.runMethod()
+
 
     
 def main(argv=None):

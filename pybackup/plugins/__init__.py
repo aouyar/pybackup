@@ -28,35 +28,27 @@ class BackupPluginRegistry():
     def __init__(self):
         self._methodDict = {}
         
-    def register(self, name, func, cls=None):
-        if cls is None:
-            if isinstance(func, types.FunctionType):
-                self._methodDict[name] = (None, func)
-                return True
-            else:
-                raise AttributeError("Function registered by plugin for "
-                                     "backup method %s is invalid." % name)
-        else:
-            try:
-                if issubclass(cls, BackupPluginBase):
-                    try:
-                        attr = getattr(cls, func)
-                        if not isinstance(attr, types.UnboundMethodType):
-                            raise
-                    except:
-                        raise AttributeError("Function registered by plugin for "
-                                             "backup method %s is not a valid "
-                                             "method name for class %s."
-                                             % (name, cls.__name__))
-                    else:
-                        self._methodDict[name] = (cls, func)
+    def register(self, name, cls, func):
+        try:
+            if issubclass(cls, BackupPluginBase):
+                try:
+                    attr = getattr(cls, func)
+                    if not isinstance(attr, types.UnboundMethodType):
+                        raise
+                except:
+                    raise AttributeError("Function registered by plugin for "
+                                         "backup method %s is not a valid "
+                                         "method name for class %s."
+                                         % (name, cls.__name__))
                 else:
-                    raise AttributeError("Class registered by plugin for "
-                                         "backup method %s is not a subclass "
-                                         "of BackupPluginBase class." %  name)
-            except TypeError:
-                raise TypeError("The cls argument in registeration of plugin for "
-                                "backup method %s is not a valid class." %  name)
+                    self._methodDict[name] = (cls, func)
+            else:
+                raise AttributeError("Class registered by plugin for "
+                                     "backup method %s is not a subclass "
+                                     "of BackupPluginBase class." %  name)
+        except TypeError:
+            raise TypeError("The cls argument in registeration of plugin for "
+                            "backup method %s is not a valid class." %  name)
         
     def getList(self):
         return self._methodDict.keys()
@@ -64,14 +56,11 @@ class BackupPluginRegistry():
     def hasMethod(self, name):
         return self._methodDict.has_key(name)
     
-    def runMethod(self, name, conf):
+    def runMethod(self, name, global_conf, job_conf):
         if self._methodDict.has_key(name):
-            cls, func = self._methodDict[name]
-            if cls is None:
-                func(conf)
-            else:
-                obj = cls(**conf)
-                getattr(obj, func)()
+            (cls, func) = self._methodDict[name]
+            obj = cls(global_conf, job_conf)
+            getattr(obj, func)()
         else:
             raise errors.BackupConfigError("Invalid backup method name: %s"
                                            % name)
@@ -81,26 +70,39 @@ backupPluginRegistry = BackupPluginRegistry()
 
 class BackupPluginBase():
     
-    _baseOptList = ('job_name', 'job_path', 'backup_path',
-                    'cmd_compress', 'suffix_compress',
-                    'cmd_tar', 'suffix_tar', 'suffix_tgz')
-    _optList = ()
-    _baseReqOptList = ('job_name', 'job_path', 'backup_path',
-                       'cmd_compress', 'suffix_compress',
-                       'cmd_tar', 'suffix_tar', 'suffix_tgz')
-    _reqOptList = ()
-    _defaults = {}
+    _baseOpts = {'job_name': 'Job name.', 
+                 'job_path': 'Backup path for job.',
+                 'active': 'Enable / disable backups job. (yes / no)',
+                 'plugin': 'Backup plugin name.',
+                 'method': 'Backup plugin method name.',
+                 'user': 'If defined, check if script is being run by user.',}
+    _extOpts = {}
+    _baseReqOptList = ('job_path',)
+    _extReqOptList = ()
+    _globalReqOptList = ('cmd_compress', 'suffix_compress',
+                         'cmd_tar', 'suffix_tar', 'suffix_tgz',)
+    _baseDefaults = {}
+    _extDefaults = {}
     
-    def __init__(self, **kwargs):
+    def __init__(self, global_conf, job_conf):
         self._conf = {}
         self._env = None
-        for k in self._baseOptList + self._optList:
-            self._conf[k] = (kwargs.get(k) or self._defaults.get(k)) 
-        for k in self._baseReqOptList + self._reqOptList:
-            if self._conf[k] is None:
-                raise errors.BackupConfigError("Mandatory configuration "
+        for k in self._globalReqOptList:
+            if not global_conf.has_key(k):
+                raise errors.BackupFatalConfigError("Required global configuration "
+                                                    "option %s not defined." % k)
+        for k in self._baseReqOptList + self._extReqOptList:
+            if not job_conf.has_key(k):
+                raise errors.BackupConfigError("Required job configuration "
                                                "option %s not defined." % k)
-    
+        for k in job_conf:
+            if not (self._baseOpts.has_key(k) or self._extOpts.has_key(k)):
+                raise errors.BackupConfigError("Invalid job option: %s" % k)
+        self._conf.update(self._baseDefaults)
+        self._conf.update(self._extDefaults)
+        self._conf.update(global_conf)
+        self._conf.update(job_conf)
+        
     def _execBackupCmd(self, args, out_path=None, out_compress=False):
         out_fp = None
         if out_path is not None:

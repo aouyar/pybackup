@@ -24,15 +24,18 @@ __status__ = "Development"
 
 class PluginArchive(BackupPluginBase):
     
-    _optList = ('cmd_tar', 'filename_archive', 'path_list', 'base_dir', 
-                'backup_index', 'suffix_list',
-                'exclude_patterns', 'exclude_patterns_file')
-    _reqOptList = ('filename_archive', 'path_list')
-    _defaults = {'job_name': 'Archive Backup',
-                 'backup_index': 'yes', 'suffix_list': 'list'}
+    _extOpts = {'filename_archive': '', 
+                'path_list': '', 
+                'base_dir': '', 
+                'backup_index': '', 
+                'exclude_patterns': '', 
+                'exclude_patterns_file': '',}
+    _extReqOptList = ('filename_archive', 'path_list')
+    _extDefaults = {'backup_index': 'yes', 
+                    'suffix_list': 'list'}
     
-    def __init__(self, **kwargs):
-        BackupPluginBase.__init__(self, **kwargs)
+    def __init__(self, global_conf, job_conf):
+        BackupPluginBase.__init__(self, global_conf, job_conf)
         
     def _checkSrcPaths(self, path_list):
         for path in path_list:
@@ -48,14 +51,14 @@ class PluginArchive(BackupPluginBase):
         archive_path = os.path.join(self._conf['job_path'], archive_filename)
         index_path = os.path.join(self._conf['job_path'], index_filename)
         path_list = re.split('\s*,\s*|\s+', self._conf['path_list'])
-        if self._conf['exclude_patterns'] is not None:
+        if self._conf.has_key('exclude_patterns'):
             exclude_patterns = re.split('\s*,\s*|\s+', 
                                         self._conf['exclude_patterns'])
         else:
             exclude_patterns = None
         logger.info("Starting backup of paths: %s", ', '.join(path_list))
         args = [self._conf['cmd_tar'],]
-        base_dir = self._conf['base_dir']
+        base_dir = self._conf.get('base_dir')
         if base_dir is not None:
             if os.path.isdir(base_dir):
                 args.extend(['-C', base_dir])
@@ -68,7 +71,7 @@ class PluginArchive(BackupPluginBase):
         if exclude_patterns is not None:
             for pattern in exclude_patterns:
                 args.append("--exclude=%s" % pattern)
-        exclude_patterns_file = self._conf['exclude_patterns_file']
+        exclude_patterns_file = self._conf.get('exclude_patterns_file')
         if exclude_patterns_file is not None:
             if os.path.isfile(exclude_patterns_file):
                 args.append("--exclude-from=%s" % exclude_patterns_file)
@@ -91,5 +94,5 @@ class PluginArchive(BackupPluginBase):
         
         
             
-backupPluginRegistry.register('archive', 'backupDirs', PluginArchive)
+backupPluginRegistry.register('archive', PluginArchive, 'backupDirs')
 
