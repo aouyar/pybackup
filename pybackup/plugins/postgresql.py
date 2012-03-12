@@ -29,6 +29,7 @@ class PluginPostgreSQL(BackupPluginBase):
                 'db_port': 'Postgres Database Server Port.', 
                 'db_user': 'Postgres Database Server User.', 
                 'db_password': 'Postgres Database Server Password.',
+                'db_database': 'Postgres Database for initial connection.',
                 'db_list': 'List of databases. (All databases by default.)',}
     _extReqOptList = ()
     _extDefaults = {'cmd_pg_dump': 'pg_dump','cmd_pg_dumpall': 'pg_dumpall',
