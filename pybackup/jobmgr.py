@@ -11,6 +11,7 @@ from datetime import date
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger, logmgr
+import pybackup.plugins
 from pybackup.plugins import backupPluginRegistry
 from pysysinfo.util import parse_value
 
@@ -69,7 +70,7 @@ def parseCmdline(argv=None):
     return (opts, jobs)
 
 
-class JobManager():
+class JobManager:
     
     _globalOpts = {'backup_root': 'Root directory for storing backups.',
                    'hostname_dir': 'Create subdirectory for each hostname. (yes/no)', 
@@ -226,7 +227,7 @@ class JobManager():
         self.loggingEnd()
         
 
-class BackupJob():
+class BackupJob:
     
     _reqGlobalOpts = ('backup_path',)
     _reqJobOpts = ('plugin', 'method',)
@@ -255,11 +256,13 @@ class BackupJob():
             pass
         fp = None
         try:
-            fp, pathname, description = imp.find_module(plugin, ['./plugins',])
-            return imp.load_module(plugin, fp, pathname, description)
-        except ImportError, e:
-            raise errors.BackupConfigError("Failed loading backup plugin: %s"
-                                            % plugin, str(e))
+            try:
+                fp, pathname, description = imp.find_module(plugin,
+                                                            pybackup.plugins.__path__)
+                return imp.load_module(plugin, fp, pathname, description)
+            except ImportError, e:
+                raise errors.BackupConfigError("Failed loading backup plugin: %s"
+                                                % plugin, str(e))
         finally:
             if fp:
                 fp.close()

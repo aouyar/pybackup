@@ -35,7 +35,7 @@ class LogContext(logging.Filter):
         return True
 
 
-class LogManager():
+class LogManager:
     
     def __init__(self):
         self._logger = logging.getLogger()

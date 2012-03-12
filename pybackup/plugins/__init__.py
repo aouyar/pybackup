@@ -23,7 +23,7 @@ __status__ = "Development"
 bufferSize = 8192
 
 
-class BackupPluginRegistry():
+class BackupPluginRegistry:
     
     def __init__(self):
         self._methodDict = {}
@@ -68,7 +68,7 @@ class BackupPluginRegistry():
 backupPluginRegistry = BackupPluginRegistry()
 
 
-class BackupPluginBase():
+class BackupPluginBase:
     
     _baseOpts = {'job_name': 'Job name.', 
                  'job_path': 'Backup path for job.',
