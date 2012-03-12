@@ -60,7 +60,7 @@ class PluginMySQL(BackupPluginBase):
         dump_path = os.path.join(self._conf['job_path'], dump_filename)
         args = [self._conf['cmd_mysqldump'],]
         args.extend(self._connArgs)
-        if db == 'information_schema':
+        if db in ('information_schema', 'mysql'):
             args.append('--skip-lock-tables')
         if not data:
             args.extend(['--no-create-info', '--no-data' ,'--databases'])
