@@ -24,12 +24,16 @@ __status__ = "Development"
 
 class PluginArchive(BackupPluginBase):
     
-    _extOpts = {'filename_archive': '', 
-                'path_list': '', 
-                'base_dir': '', 
-                'backup_index': '', 
-                'exclude_patterns': '', 
-                'exclude_patterns_file': '',}
+    _extOpts = {'filename_archive': 'Filename for archive file. (Without extension.)', 
+                'path_list': 'List of paths to be included in the backup.', 
+                'base_dir': 'Base directory for list of paths to be included '
+                            ' the backup.', 
+                'backup_index': 'Filename for archive index file.', 
+                'exclude_patterns': 'List of filename patterns to exclude from '
+                                    'the backup.', 
+                'exclude_patterns_file': 'Path for file that stores list of '
+                                        'filename patterns to exclude from '
+                                        'the backup.',}
     _extReqOptList = ('filename_archive', 'path_list')
     _extDefaults = {'backup_index': 'yes', 
                     'suffix_list': 'list'}
