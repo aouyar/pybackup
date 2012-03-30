@@ -158,9 +158,9 @@ class JobManager:
                                                     "defined in configuration "
                                                     "file.", k)
         backup_path_elem = [self._globalConf['backup_root'], ]
+        backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
         if self._globalConf.has_key('hostname_dir'):
             backup_path_elem.append(str(platform.node()).split('.')[0])
-        backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
         self._globalConf['backup_path'] = os.path.join(*backup_path_elem)
         
     def initUmask(self):
