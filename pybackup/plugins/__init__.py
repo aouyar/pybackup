@@ -2,6 +2,8 @@
 
 """
 
+import imp
+import sys
 import os
 import types
 import subprocess
@@ -26,7 +28,29 @@ bufferSize = 8192
 class BackupPluginRegistry:
     
     def __init__(self):
+        self._plugins = {}
         self._methodDict = {}
+        
+    def loadPlugin(self, plugin):
+        if not self._plugins.get(plugin):
+            # Fast path: see if the module has already been imported.
+            try:
+                return sys.modules[plugin]
+            except KeyError:
+                pass
+            fp = None
+            try:
+                try:
+                    fp, pathname, description = imp.find_module(plugin, __path__)
+                    return imp.load_module(plugin, fp, pathname, description)
+                except ImportError, e:
+                    raise errors.BackupConfigError("Failed loading backup plugin: %s"
+                                                    % plugin, str(e))
+            finally:
+                if fp:
+                    fp.close()
+            self._plugins[plugin] = True
+            logger.info("Backup plugin loaded: %s" % plugin)
         
     def register(self, name, cls, func):
         try:
@@ -64,6 +88,14 @@ class BackupPluginRegistry:
         else:
             raise errors.BackupConfigError("Invalid backup method name: %s"
                                            % name)
+    
+    def helpMethod(self, name):
+        if self._methodDict.has_key(name):
+            (cls, func) = self._methodDict[name] #@UnusedVariable
+            return cls.getHelpText()
+        else:
+            raise errors.BackupConfigError("Invalid backup method name: %s"
+                                           % name)
             
 backupPluginRegistry = BackupPluginRegistry()
 
@@ -73,7 +105,6 @@ class BackupPluginBase:
     _baseOpts = {'job_name': 'Job name.', 
                  'job_path': 'Backup path for job.',
                  'active': 'Enable / disable backups job. (yes / no)',
-                 'plugin': 'Backup plugin name.',
                  'method': 'Backup plugin method name.',
                  'user': 'If defined, check if script is being run by user.',}
     _extOpts = {}
@@ -102,6 +133,21 @@ class BackupPluginBase:
         self._conf.update(self._extDefaults)
         self._conf.update(global_conf)
         self._conf.update(job_conf)
+        
+    @classmethod
+    def getHelpText(cls):
+        lines = []
+        lines.append("Base Options")
+        for opt in sorted(cls._baseOpts.keys()):
+            desc = cls._baseOpts[opt]
+            lines.append("    %-24s: %s" % (opt, desc))
+        lines.append("")
+        lines.append("Plugin Options")
+        for opt in sorted(cls._extOpts.keys()):
+            desc = cls._extOpts[opt]
+            lines.append("    %-24s: %s" % (opt, desc))
+        lines.append("")
+        return "\n".join(lines)
         
     def _execBackupCmd(self, args, out_path=None, out_compress=False):
         out_fp = None

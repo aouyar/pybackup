@@ -24,7 +24,7 @@ __status__ = "Development"
 class PluginPostgreSQL(BackupPluginBase):
     
     _extOpts = {'filename_dump_globals': '', 
-                'filename_dump_db_prefix': '',
+                'filename_dump_db': '',
                 'db_host': 'PostgresSQL Database Server Name or IP.', 
                 'db_port': 'Postgres Database Server Port.', 
                 'db_user': 'Postgres Database Server User.', 
@@ -34,7 +34,7 @@ class PluginPostgreSQL(BackupPluginBase):
     _extReqOptList = ()
     _extDefaults = {'cmd_pg_dump': 'pg_dump','cmd_pg_dumpall': 'pg_dumpall',
                     'filename_dump_globals': 'pg_dump_globals',
-                    'filename_dump_db_prefix': 'pg_dump_db',}
+                    'filename_dump_db': 'pg_dump_db',}
     
     def __init__(self, global_conf, job_conf):
         BackupPluginBase.__init__(self, global_conf, job_conf)
@@ -69,7 +69,7 @@ class PluginPostgreSQL(BackupPluginBase):
                                      *utils.split_msg(err))
         
     def dumpDatabase(self, db):
-        dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db_prefix'], 
+        dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db'], 
                                         db)
         dump_path = os.path.join(self._conf['job_path'], dump_filename)
         args = [self._conf['cmd_pg_dump'], '-w', '-Fc']

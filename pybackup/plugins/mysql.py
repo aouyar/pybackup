@@ -23,7 +23,7 @@ __status__ = "Development"
 
 class PluginMySQL(BackupPluginBase):
     
-    _extOpts = {'filename_dump_db_prefix': 'Filename for MySQL dump files.',
+    _extOpts = {'filename_dump_db': 'Filename for MySQL dump files.',
                 'db_host': 'MySQL Database Server Name or IP.', 
                 'db_port': 'MySQL Database Server Port.', 
                 'db_user': 'MySQL Database Server User.', 
@@ -31,7 +31,7 @@ class PluginMySQL(BackupPluginBase):
                 'db_list': 'List of databases. (All databases by default.)',}
     _extReqOptList = ()
     _extDefaults = {'cmd_mysqldump': 'mysqldump',
-                    'filename_dump_db_prefix': 'mysql_dump',}
+                    'filename_dump_db': 'mysql_dump',}
     
     def __init__(self, global_conf, job_conf):
         BackupPluginBase.__init__(self, global_conf, job_conf)
@@ -54,7 +54,7 @@ class PluginMySQL(BackupPluginBase):
         else:
             dump_type = 'db'
             dump_desc = 'MySQL Database Container'
-        dump_filename = "%s_%s_%s.dump.%s" % (self._conf['filename_dump_db_prefix'], 
+        dump_filename = "%s_%s_%s.dump.%s" % (self._conf['filename_dump_db'], 
                                         db, dump_type,
                                         self._conf['suffix_compress'])
         dump_path = os.path.join(self._conf['job_path'], dump_filename)
