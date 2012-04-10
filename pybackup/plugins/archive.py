@@ -27,8 +27,8 @@ class PluginArchive(BackupPluginBase):
     _extOpts = {'filename_archive': 'Filename for archive file. (Without extension.)', 
                 'path_list': 'List of paths to be included in the backup.', 
                 'base_dir': 'Base directory for list of paths to be included '
-                            ' the backup.', 
-                'backup_index': 'Filename for archive index file.', 
+                            ' the backup. (Absolute paths are used by default.)', 
+                'backup_index': 'Enable / disable index file. (Default: no)', 
                 'exclude_patterns': 'List of filename patterns to exclude from '
                                     'the backup.', 
                 'exclude_patterns_file': 'Path for file that stores list of '
@@ -36,7 +36,7 @@ class PluginArchive(BackupPluginBase):
                                         'the backup.',}
     _extReqOptList = ('filename_archive', 'path_list')
     _extDefaults = {'backup_index': 'yes', 
-                    'suffix_list': 'list'}
+                    'suffix_index': 'list'}
     
     def __init__(self, global_conf, job_conf):
         BackupPluginBase.__init__(self, global_conf, job_conf)
@@ -51,31 +51,32 @@ class PluginArchive(BackupPluginBase):
         archive_filename = "%s.%s" % (self._conf['filename_archive'], 
                                       self._conf['suffix_tgz'])
         index_filename = "%s.%s" % (self._conf['filename_archive'], 
-                                      self._conf['suffix_list'])
+                                      self._conf['suffix_index'])
         archive_path = os.path.join(self._conf['job_path'], archive_filename)
+        backup_index = parse_value(self._conf.get('backup_index'), True)
         index_path = os.path.join(self._conf['job_path'], index_filename)
-        path_list = re.split('\s*,\s*|\s+', self._conf['path_list'])
+        base_dir = self._conf.get('base_dir')
+        path_list = [os.path.normpath(path) 
+                     for path in re.split('\s*,\s*|\s+', self._conf['path_list'])]
         if self._conf.has_key('exclude_patterns'):
             exclude_patterns = re.split('\s*,\s*|\s+', 
                                         self._conf['exclude_patterns'])
         else:
             exclude_patterns = None
+        exclude_patterns_file = self._conf.get('exclude_patterns_file')
         logger.info("Starting backup of paths: %s", ', '.join(path_list))
         args = [self._conf['cmd_tar'],]
-        base_dir = self._conf.get('base_dir')
         if base_dir is not None:
             if os.path.isdir(base_dir):
                 args.extend(['-C', base_dir])
             else:
                 raise errors.BackupConfigError("Invalid base directory "
                                                "(base_dir): %s"% base_dir)
-        backup_index = parse_value(self._conf['backup_index'], True)
         if backup_index:
             args.append('-v')
         if exclude_patterns is not None:
             for pattern in exclude_patterns:
                 args.append("--exclude=%s" % pattern)
-        exclude_patterns_file = self._conf.get('exclude_patterns_file')
         if exclude_patterns_file is not None:
             if os.path.isfile(exclude_patterns_file):
                 args.append("--exclude-from=%s" % exclude_patterns_file)
