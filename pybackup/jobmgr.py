@@ -40,6 +40,9 @@ def parseCmdline(argv=None):
                       dest='debug', default=False, action='store_true')
     parser.add_option('-t', '--trace', help='Activate tracing of errors.',
                       dest='trace', default=False, action='store_true')
+    parser.add_option('-n', '--dry-run', 
+                      help='Execute test run without executing the backup.',
+                      dest='dryRun', default=False, action='store_true')
     parser.add_option('-a', '--all', 
                       help='Run all jobs listed in configuration file.',
                       dest='allJobs', default=False, action='store_true')
@@ -62,6 +65,7 @@ def parseCmdline(argv=None):
     if cmdopts.trace:
         errors.set_trace()
     opts = {}
+    opts['dry_run'] = cmdopts.dryRun
     if cmdopts.debug:
         opts['console_loglevel'] = 'debug'
         opts['logfile_loglevel'] = 'debug'
@@ -125,18 +129,23 @@ class JobManager:
     def loggingInit(self):
         if self._help is None:
             logmgr.setContext('STARTUP')
-            level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
         else:
             logmgr.setContext('HELP')
-            level = logging.INFO
+        level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
         logmgr.configConsole(level)
         if self._help is None:
-            logger.info("Start Execution of Backup Jobs.")
+            if self._globalConf.get('dry_run', False):
+                logger.info("Start Execution of Backup Jobs. (Test Run)")
+            else:
+                logger.info("Start Execution of Backup Jobs.")
         
     def loggingEnd(self):
         if self._help is None:
             logmgr.setContext('FINAL')
-            logger.info("Finished Execution of Backup Jobs.")
+            if self._globalConf.get('dry_run', False):
+                logger.info("Finished Execution of Backup Jobs. (Test Run)")
+            else:    
+                logger.info("Finished Execution of Backup Jobs.")
         
     def loggingConfig(self):
         console_level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
@@ -175,8 +184,7 @@ class JobManager:
                 options = confmgr.items('general')
                 global_conf = dict(options)
             elif section == 'plugins':
-                for (plugin, state) in confmgr.items('plugins'):
-                    self._plugins[plugin] = parse_value(state, True)
+                self._plugins = dict(confmgr.items('plugins'))
             else:
                 options = confmgr.items(section)
                 self._jobsConf[section] = dict(options)
@@ -193,6 +201,8 @@ class JobManager:
                 raise errors.BackupFatalConfigError("Required option %s is not"
                                                     "defined in configuration "
                                                     "file.", k)
+        self._globalConf['backup_root'] = os.path.normpath(
+                                            self._globalConf['backup_root'])
         backup_path_elem = [self._globalConf['backup_root'], ]
         backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
         if self._globalConf.has_key('hostname_dir'):
@@ -200,11 +210,8 @@ class JobManager:
         self._globalConf['backup_path'] = os.path.join(*backup_path_elem)
         
     def loadPlugins(self):
-        for (plugin, state) in self._plugins.items():
-            if state:
-                backupPluginRegistry.loadPlugin(plugin)
-            else:
-                logging.info("Backup plugin disabled: %s", plugin)
+        for (plugin, module) in self._plugins.items():
+            backupPluginRegistry.loadPlugin(plugin, module)
     
     def listJobs(self):
         for job_name in self._jobsConf.keys():
@@ -218,9 +225,8 @@ class JobManager:
                                                                str(job_conf.get('method')))
             
     def listPlugins(self):
-        for (plugin, state) in self._plugins.items():
-            enabled = parse_value(state, True)
-            print "Plugin: %s   Enabled: %s" % (plugin, enabled)
+        for (plugin, module) in self._plugins.items():
+            print "Plugin: %s   Module: %s" % (plugin, module)
             
     def listMethods(self):
         for method in sorted(backupPluginRegistry.getList()):
@@ -228,7 +234,11 @@ class JobManager:
             
     def helpMethod(self):
         method = self._jobs[0]
-        print backupPluginRegistry.helpMethod(method)
+        help_text = backupPluginRegistry.helpMethod(method)
+        if help_text is not None:
+            print help_text
+        else:
+            print "Invalid backup method: %s" % method
             
     def initUmask(self):
         umask = self._globalConf.get('umask')
@@ -251,12 +261,13 @@ class JobManager:
                 raise errors.BackupFatalEnvironmentError("Creation of backup base "
                                                          "directory (%s) failed."
                                                          % backup_path)
-        logger.debug("Backup base directory (%s) created.", backup_path)
+            logger.debug("Backup base directory (%s) created.", backup_path)
         
     def runJobs(self):
         for job_name in self._jobs:
             logmgr.setContext(job_name)
             job_conf = self._jobsConf.get(job_name)
+            dry_run = self._globalConf.get('dry_run', False)
             try:
                 if job_conf:
                     if job_conf.has_key('active'):
@@ -264,10 +275,16 @@ class JobManager:
                         if not active:
                             logger.warn("Backup job disabled by configuration.")
                             continue
-                    logger.info("Starting execution of backup job")
+                    if dry_run:
+                        logger.info("Starting execution of backup job. (Test Run)")
+                    else:
+                        logger.info("Starting execution of backup job.")
                     job = BackupJob(job_name, self._globalConf, job_conf)
                     job.run()
-                    logger.info("Finished execution of backup job")
+                    if dry_run:
+                        logger.info("Finished execution of backup job. (Test Run)")
+                    else:
+                        logger.info("Finished execution of backup job.")
                 else:
                     raise errors.BackupConfigError("No configuration found for "
                                                    "backup job.")

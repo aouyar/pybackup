@@ -25,32 +25,54 @@ __status__ = "Development"
 bufferSize = 8192
 
 
+
+def load_module(module, parent=None, path=None):
+    (mod, sep, tail) = module.partition('.') #@UnusedVariable
+    if parent is not None:
+        modname = '%s.%s' % (parent, mod)
+    else:
+        modname = mod
+    if not sys.modules.has_key(modname):
+        fp = None
+        try:
+            try:
+                fp, pathname, description = imp.find_module(mod, path)
+                modobj = imp.load_module(modname, fp, pathname, description)
+            except ImportError:
+                raise
+        finally:
+            if fp:
+                fp.close()
+    else:
+        modobj = sys.modules[modname]
+    if tail == '':
+        return modobj
+    else:
+        return load_module(tail, modname, modobj.__path__)
+        
+
 class BackupPluginRegistry:
     
     def __init__(self):
         self._plugins = {}
         self._methodDict = {}
         
-    def loadPlugin(self, plugin):
-        if not self._plugins.get(plugin):
+    def loadPlugin(self, plugin, module):
+        if not self._plugins.has_key(plugin):
             # Fast path: see if the module has already been imported.
-            try:
-                return sys.modules[plugin]
-            except KeyError:
-                pass
-            fp = None
-            try:
+            if sys.modules.has_key(plugin):
+                modobj = sys.modules[plugin]
+            else:
                 try:
-                    fp, pathname, description = imp.find_module(plugin, __path__)
-                    return imp.load_module(plugin, fp, pathname, description)
+                    modobj = load_module(module)
                 except ImportError, e:
-                    raise errors.BackupConfigError("Failed loading backup plugin: %s"
-                                                    % plugin, str(e))
-            finally:
-                if fp:
-                    fp.close()
-            self._plugins[plugin] = True
-            logger.info("Backup plugin loaded: %s" % plugin)
+                    raise errors.BackupConfigError(
+                        "Failed loading backup plugin: %s   Module: %s" 
+                        % (plugin, module), str(e))
+            self._plugins[plugin] = module
+            logger.debug("Backup plugin loaded: %s    Module: %s" % (plugin, 
+                                                                     module))
+            return modobj
         
     def register(self, name, cls, func):
         try:
@@ -94,8 +116,7 @@ class BackupPluginRegistry:
             (cls, func) = self._methodDict[name] #@UnusedVariable
             return cls.getHelpText()
         else:
-            raise errors.BackupConfigError("Invalid backup method name: %s"
-                                           % name)
+            None
             
 backupPluginRegistry = BackupPluginRegistry()
 
@@ -118,6 +139,7 @@ class BackupPluginBase:
     def __init__(self, global_conf, job_conf):
         self._conf = {}
         self._env = None
+        self._dryRun = global_conf.get('dry_run', False)
         for k in self._globalReqOptList:
             if not global_conf.has_key(k):
                 raise errors.BackupFatalConfigError("Required global configuration "
@@ -149,7 +171,8 @@ class BackupPluginBase:
         lines.append("")
         return "\n".join(lines)
         
-    def _execBackupCmd(self, args, out_path=None, out_compress=False):
+    def _execBackupCmd(self, args, out_path=None, out_compress=False, 
+                       force_exec=False):
         out_fp = None
         if out_path is not None:
                 try:
@@ -158,8 +181,11 @@ class BackupPluginBase:
                     raise errors.BackupFileCreateError(
                         "Failed creation of backup file: %s" % out_path,
                         "Error Message: %s" % str(e))
+        if not force_exec and self._dryRun:
+            logger.debug("Fake execution of command: %s", ' '.join(args))
+            return (0, '', '')
+        logger.debug("Executing command: %s", ' '.join(args))
         if out_path is not None and out_compress:
-            logger.debug("Executing command: %s", ' '.join(args))
             try:
                 cmd = subprocess.Popen(args, 
                                        stdout=subprocess.PIPE,
@@ -192,7 +218,6 @@ class BackupPluginBase:
                                          "with error code %s." % cmd_comp.returncode,
                                          utils.split_msg(comp_err))
         else:
-            logger.debug("Executing command: %s", ' '.join(args))
             try:
                 cmd = subprocess.Popen(args,
                                        stdout=(out_fp or subprocess.PIPE), 
