@@ -86,7 +86,7 @@ class BackupPluginRegistry:
                                     "method name for class %s in plugin %s (%s)."
                                     % (name, cls.__name__, plugin, module))
                             self._methodDict[name] = (cls, func)
-                            self._plugins[plugin]['methods'].append(func)
+                            self._plugins[plugin]['methods'].append(name)
                             logger.debug("Registered backup method %s from" 
                                          " plugin %s.", name, plugin)
                         else:
@@ -193,7 +193,7 @@ class BackupPluginBase:
         out_fp = None
         if out_path is not None:
                 try:
-                    out_fp = os.open(out_path, os.O_WRONLY | os.O_CREAT)
+                    out_fp = os.open(out_path, os.O_WRONLY | os.O_CREAT, 0666)
                 except Exception, e:
                     raise errors.BackupFileCreateError(
                         "Failed creation of backup file: %s" % out_path,
