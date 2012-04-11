@@ -6,7 +6,7 @@ import os
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger
-from pybackup.plugins import BackupPluginBase, backupPluginRegistry
+from pybackup.plugins import BackupPluginBase
 from pysysinfo.mysql import MySQLinfo
 
 
@@ -103,5 +103,5 @@ class PluginMySQL(BackupPluginBase):
         self.dumpDatabases()
         
     
-backupPluginRegistry.register('mysql_dump_full', PluginMySQL, 'dumpFull')
-backupPluginRegistry.register('mysql_dump_databases', PluginMySQL, 'dumpDatabases')
+methodList = (('mysql_dump_full', PluginMySQL, 'dumpFull'),
+              ('mysql_dump_databases', PluginMySQL, 'dumpDatabases'),)

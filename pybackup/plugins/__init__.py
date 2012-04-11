@@ -69,35 +69,51 @@ class BackupPluginRegistry:
                     raise errors.BackupConfigError(
                         "Failed loading backup plugin: %s   Module: %s" 
                         % (plugin, module), str(e))
-            self._plugins[plugin] = module
+            self._plugins[plugin] = {'module': module, 'methods': []}
             logger.debug("Backup plugin loaded: %s    Module: %s" % (plugin, 
                                                                      module))
+            if hasattr(modobj, 'methodList'):
+                for (name, cls, func) in modobj.methodList:
+                    try:
+                        if issubclass(cls, BackupPluginBase):
+                            try:
+                                attr = getattr(cls, func)
+                                if not isinstance(attr, types.UnboundMethodType):
+                                    raise
+                            except:
+                                raise errors.BackupBadPluginError(
+                                    "Function for backup method %s is not a valid "
+                                    "method name for class %s in plugin %s (%s)."
+                                    % (name, cls.__name__, plugin, module))
+                            self._methodDict[name] = (cls, func)
+                            self._plugins[plugin]['methods'].append(func)
+                            logger.debug("Registered backup method %s from" 
+                                         " plugin %s.", name, plugin)
+                        else:
+                            raise errors.BackupBadPluginError(
+                                "Class for backup method %s in plugin %s (%s)"
+                                " is not a subclass of BackupPluginBase." 
+                                %  (name, plugin, module))
+                    except TypeError:
+                        raise errors.BackupBadPluginError(
+                                "The class for backup method %s in plugin"
+                                " %s (%s) is not a valid class." 
+                                %  (name, plugin, module))
+            else:
+                raise errors.BackupBadPluginError("Plugin %s (%s) does not define"
+                                                  " any methods to be registered."
+                                                  % (plugin, module))
             return modobj
         
-    def register(self, name, cls, func):
-        try:
-            if issubclass(cls, BackupPluginBase):
-                try:
-                    attr = getattr(cls, func)
-                    if not isinstance(attr, types.UnboundMethodType):
-                        raise
-                except:
-                    raise AttributeError("Function registered by plugin for "
-                                         "backup method %s is not a valid "
-                                         "method name for class %s."
-                                         % (name, cls.__name__))
-                else:
-                    self._methodDict[name] = (cls, func)
-            else:
-                raise AttributeError("Class registered by plugin for "
-                                     "backup method %s is not a subclass "
-                                     "of BackupPluginBase class." %  name)
-        except TypeError:
-            raise TypeError("The cls argument in registeration of plugin for "
-                            "backup method %s is not a valid class." %  name)
-        
-    def getList(self):
-        return self._methodDict.keys()
+    def getPluginList(self):
+        return self._plugins.keys()
+    
+    def getMethodList(self, plugin):
+        if self._plugins.has_key(plugin):
+            return self._plugins[plugin]['methods']
+        else:
+            raise errors.BackupConfigError("Invalid backup plugin name: %s"
+                                           % plugin)
     
     def hasMethod(self, name):
         return self._methodDict.has_key(name)
@@ -135,6 +151,7 @@ class BackupPluginBase:
                          'cmd_tar', 'suffix_tar', 'suffix_tgz',)
     _baseDefaults = {}
     _extDefaults = {}
+    _methodDict = {}
     
     def __init__(self, global_conf, job_conf):
         self._conf = {}

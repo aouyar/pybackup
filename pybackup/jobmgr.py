@@ -229,8 +229,11 @@ class JobManager:
             print "Plugin: %s   Module: %s" % (plugin, module)
             
     def listMethods(self):
-        for method in sorted(backupPluginRegistry.getList()):
-            print "Method: %s" % (method,)
+        for plugin in sorted(backupPluginRegistry.getPluginList()):
+            print "Plugin: %s" % plugin
+            for method in sorted(backupPluginRegistry.getMethodList(plugin)):
+                print "    Method: %s" % method
+            print
             
     def helpMethod(self):
         method = self._jobs[0]

@@ -1,7 +1,7 @@
 pybackup - Backup Script in Python
 ==================================
 
-Python Module for automating backups.
+Python Module for implementing backup scripts.
 
 
 Licensing

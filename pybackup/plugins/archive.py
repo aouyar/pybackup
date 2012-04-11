@@ -7,7 +7,7 @@ import re
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger
-from pybackup.plugins import BackupPluginBase, backupPluginRegistry
+from pybackup.plugins import BackupPluginBase
 from pysysinfo.util import parse_value
 
 
@@ -97,7 +97,5 @@ class PluginArchive(BackupPluginBase):
                                      % returncode,
                                      *utils.split_msg(err))
         
-        
-            
-backupPluginRegistry.register('archive', PluginArchive, 'backupDirs')
+methodList = (('archive', PluginArchive, 'backupDirs'),)
 

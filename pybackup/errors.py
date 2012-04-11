@@ -42,6 +42,10 @@ class BackupCmdError(BackupError):
 class BackupFileCreateError(BackupError):
     pass
 
+class BackupBadPluginError(BackupError):
+    desc = 'Plugin does not conform to standards.'
+    fatal = True
+
 
 def set_trace():
     BackupError.trace = True

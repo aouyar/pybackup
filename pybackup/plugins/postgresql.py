@@ -6,7 +6,7 @@ import os
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger
-from pybackup.plugins import BackupPluginBase, backupPluginRegistry
+from pybackup.plugins import BackupPluginBase
 from pysysinfo.postgresql import PgInfo
 
 
@@ -114,7 +114,7 @@ class PluginPostgreSQL(BackupPluginBase):
         self.dumpGlobals()
         self.dumpDatabases()
         
-    
-backupPluginRegistry.register('pg_dump_full', PluginPostgreSQL, 'dumpFull')
-backupPluginRegistry.register('pg_dump_globals', PluginPostgreSQL, 'dumpGlobals')
-backupPluginRegistry.register('pg_dump_databases', PluginPostgreSQL, 'dumpDatabases')
+
+methodList = (('pg_dump_full', PluginPostgreSQL, 'dumpFull'),
+              ('pg_dump_globals', PluginPostgreSQL, 'dumpGlobals'),
+              ('pg_dump_databases', PluginPostgreSQL, 'dumpDatabases'),)

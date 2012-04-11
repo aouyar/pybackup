@@ -7,7 +7,7 @@ import re
 from pybackup import errors
 from pybackup import utils
 from pybackup.logmgr import logger
-from pybackup.plugins import BackupPluginBase, backupPluginRegistry
+from pybackup.plugins import BackupPluginBase
 from pysysinfo.util import parse_value
 
 
@@ -123,7 +123,6 @@ class PluginRsync(BackupPluginBase):
                                      % returncode,
                                      *utils.split_msg(err))
         
-        
-            
-backupPluginRegistry.register('rsync', PluginRsync, 'syncDirs')
+                  
+methodList = (('rsync', PluginRsync, 'syncDirs'),)
 
