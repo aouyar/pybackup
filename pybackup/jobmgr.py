@@ -204,9 +204,9 @@ class JobManager:
         self._globalConf['backup_root'] = os.path.normpath(
                                             self._globalConf['backup_root'])
         backup_path_elem = [self._globalConf['backup_root'], ]
-        backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
         if self._globalConf.has_key('hostname_dir'):
             backup_path_elem.append(str(platform.node()).split('.')[0])
+        backup_path_elem.append(date.today().strftime('%Y-%m-%d'))
         self._globalConf['backup_path'] = os.path.join(*backup_path_elem)
         
     def loadPlugins(self):
@@ -247,7 +247,7 @@ class JobManager:
         umask = self._globalConf.get('umask')
         if umask is not None:
             os.umask(int(umask, 8))
-            logger.debug("OS Umask set to: %s", umask)
+            logger.debug("OS umask set to: %s", umask)
         
     def checkUser(self):
         user = self._globalConf.get('user')
