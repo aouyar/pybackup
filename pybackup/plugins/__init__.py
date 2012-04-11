@@ -69,7 +69,9 @@ class BackupPluginRegistry:
                     raise errors.BackupConfigError(
                         "Failed loading backup plugin: %s   Module: %s" 
                         % (plugin, module), str(e))
-            self._plugins[plugin] = {'module': module, 'methods': []}
+            self._plugins[plugin] = {'module': module,
+                                     'desc': '', 
+                                     'methods': []}
             logger.debug("Backup plugin loaded: %s    Module: %s" % (plugin, 
                                                                      module))
             if hasattr(modobj, 'methodList'):
@@ -103,11 +105,20 @@ class BackupPluginRegistry:
                 raise errors.BackupBadPluginError("Plugin %s (%s) does not define"
                                                   " any methods to be registered."
                                                   % (plugin, module))
+            if hasattr(modobj, 'description'):
+                self._plugins[plugin]['description'] = modobj.description
             return modobj
         
     def getPluginList(self):
         return self._plugins.keys()
     
+    def getPluginDesc(self, plugin):
+        if self._plugins.has_key(plugin):
+            return self._plugins[plugin]['description']
+        else:
+            raise errors.BackupConfigError("Invalid backup plugin name: %s"
+                                           % plugin)
+        
     def getMethodList(self, plugin):
         if self._plugins.has_key(plugin):
             return self._plugins[plugin]['methods']

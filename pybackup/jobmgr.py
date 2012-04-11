@@ -226,7 +226,8 @@ class JobManager:
             
     def listPlugins(self):
         for (plugin, module) in self._plugins.items():
-            print "Plugin: %s   Module: %s" % (plugin, module)
+            desc = backupPluginRegistry.getPluginDesc(plugin)
+            print "Plugin: %s   Module: %s\n%s\n" % (plugin, module, desc)
             
     def listMethods(self):
         for plugin in sorted(backupPluginRegistry.getPluginList()):

@@ -96,6 +96,7 @@ class PluginArchive(BackupPluginBase):
             raise errors.BackupError("Backup of paths failed with error code: %s." 
                                      % returncode,
                                      *utils.split_msg(err))
-        
+
+description = "Plugin for backups using tar archives."        
 methodList = (('archive', PluginArchive, 'backupDirs'),)
 

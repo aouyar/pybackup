@@ -193,6 +193,7 @@ class PluginBackupSync(PluginRsync):
         else:
             self._src_list.append(src_path)
     
-                  
+
+description = "Plugin for backups using rsync."        
 methodList = (('rsync_dirs', PluginRsync, 'syncDirs'),
               ('rsync_backupdir', PluginBackupSync, 'syncDirs'),)

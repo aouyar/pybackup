@@ -114,7 +114,7 @@ class PluginPostgreSQL(BackupPluginBase):
         self.dumpGlobals()
         self.dumpDatabases()
         
-
+description = "Plugin for backups of PostgreSQL Database." 
 methodList = (('pg_dump_full', PluginPostgreSQL, 'dumpFull'),
               ('pg_dump_globals', PluginPostgreSQL, 'dumpGlobals'),
               ('pg_dump_databases', PluginPostgreSQL, 'dumpDatabases'),)

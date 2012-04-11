@@ -102,6 +102,7 @@ class PluginMySQL(BackupPluginBase):
     def dumpFull(self):
         self.dumpDatabases()
         
-    
+
+description = "Plugin for backups of MySQL Database."    
 methodList = (('mysql_dump_full', PluginMySQL, 'dumpFull'),
               ('mysql_dump_databases', PluginMySQL, 'dumpDatabases'),)
