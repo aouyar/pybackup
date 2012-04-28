@@ -15,9 +15,9 @@ __email__ = "aouyar at gmail.com"
 __status__ = "Development"
 
 
+
 def split_msg(msg):
     return [line for line in msg.splitlines() if len(line.strip()) > 0]
 
 def checkUser(user):
     return pwd.getpwnam(user).pw_uid == os.getuid()
-    

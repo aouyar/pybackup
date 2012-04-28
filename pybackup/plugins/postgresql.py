@@ -59,7 +59,10 @@ class PluginPostgreSQL(BackupPluginBase):
         args.extend(self._connArgs)
         logger.info("Starting PostgreSQL Global Objects dump."
                     "  Backup: %s", dump_path)
-        returncode, out, err = self._execBackupCmd(args, dump_path, True) #@UnusedVariable
+        returncode, out, err = self._execBackupCmd(args, #@UnusedVariable
+                                                   self._env,
+                                                   out_path=dump_path, 
+                                                   out_compress=True) 
         if returncode == 0:
             logger.info("Finished PostgreSQL Global Objects dump."
                         "  Backup: %s", dump_path)
@@ -77,7 +80,7 @@ class PluginPostgreSQL(BackupPluginBase):
         args.extend(['-f', dump_path, db])
         logger.info("Starting dump of PostgreSQL Database: %s"
                     "  Backup: %s", db, dump_path)
-        returncode, out, err = self._execBackupCmd(args) #@UnusedVariable
+        returncode, out, err = self._execBackupCmd(args, self._env) #@UnusedVariable
         if returncode == 0:
             logger.info("Finished dump of PostgreSQL Database: %s"
                         "  Backup: %s", db, dump_path)

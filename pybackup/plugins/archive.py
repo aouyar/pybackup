@@ -87,7 +87,8 @@ class PluginArchive(BackupPluginBase):
         self._checkSrcPaths(path_list)
         args.extend(path_list)
         if backup_index:
-            returncode, out, err = self._execBackupCmd(args, index_path) #@UnusedVariable
+            returncode, out, err = self._execBackupCmd(args, #@UnusedVariable
+                                                       out_path=index_path) 
         else:
             returncode, out, err = self._execBackupCmd(args) #@UnusedVariable
         if returncode == 0:

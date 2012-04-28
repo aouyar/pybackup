@@ -39,6 +39,9 @@ class BackupFatalEnvironmentError(BackupEnvironmentError):
 class BackupCmdError(BackupError):
     pass
 
+class ExternalCmdError(BackupError):
+    desc = 'Error in execution of external script.'
+
 class BackupFileCreateError(BackupError):
     pass
 

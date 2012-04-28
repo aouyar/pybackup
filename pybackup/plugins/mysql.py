@@ -68,8 +68,9 @@ class PluginMySQL(BackupPluginBase):
         logger.info("Starting dump of %s: %s"
                     "  Backup: %s", dump_desc, db, dump_path)
         returncode, out, err = self._execBackupCmd(args, #@UnusedVariable
-                                                   dump_path,
-                                                   True)
+                                                   self._env,
+                                                   out_path=dump_path,
+                                                   out_compress=True)
         if returncode == 0:
             logger.info("Finished dump of %s: %s"
                         "  Backup: %s", dump_desc, db, dump_path)

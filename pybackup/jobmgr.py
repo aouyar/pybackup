@@ -107,7 +107,9 @@ class JobManager:
                    'umask': 'Umask for file and directory creation.',
                    'console_loglevel': 'Logging level for console.', 
                    'logfile_loglevel': 'Logging level for log file.',
-                   'filename_logfile': 'Filename for log file.',}
+                   'filename_logfile': 'Filename for log file.',
+                   'pre_exec': 'Script to be executed before starting running jobs.',
+                   'post_exec': 'Script to be executed after finishing running jobs.', }
     _reqGlobalOpts = ('backup_root',)
     _globalConf = {'console_loglevel': 'info',
                    'logfile_loglevel': 'info',

@@ -140,7 +140,8 @@ class PluginRsync(BackupPluginBase):
             raise errors.BackupConfigError("No valid source paths defined for backup.")
         args.append(self._archive_path)         
         if backup_index:
-            returncode, out, err = self._execBackupCmd(args, self._index_path, #@UnusedVariable
+            returncode, out, err = self._execBackupCmd(args, #@UnusedVariable
+                                                       out_path=self._index_path, 
                                                        force_exec=True) 
         else:
             returncode, out, err = self._execBackupCmd(args, force_exec=True) #@UnusedVariable

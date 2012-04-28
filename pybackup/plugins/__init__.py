@@ -50,6 +50,22 @@ def load_module(module, parent=None, path=None):
     else:
         return load_module(tail, modname, modobj.__path__)
         
+        
+def exec_ext_cmd(args, env):
+    try:
+        cmd = subprocess.Popen(args,
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE, 
+                               bufsize=bufferSize,
+                               env = env)
+    except Exception, e:
+        raise errors.ExternalCmdError("External script execution failed.",
+                                      "Command: %s" % ' '.join(args),
+                                      "Error Message: %s" % str(e))
+    out, err = cmd.communicate(None)
+    return (cmd.returncode, out, err)
+    
+    
 
 class BackupPluginRegistry:
     
@@ -154,7 +170,9 @@ class BackupPluginBase:
                  'job_path': 'Backup path for job.',
                  'active': 'Enable / disable backups job. (yes / no)',
                  'method': 'Backup plugin method name.',
-                 'user': 'If defined, check if script is being run by user.',}
+                 'user': 'If defined, check if script is being run by user.',
+                 'job_pre_exec': 'Script to be executed before backup job.',
+                 'job_post_exec': 'Script to be executed after backup job.',}
     _extOpts = {}
     _baseReqOptList = ('job_path',)
     _extReqOptList = ()
@@ -199,7 +217,7 @@ class BackupPluginBase:
         lines.append("")
         return "\n".join(lines)
         
-    def _execBackupCmd(self, args, out_path=None, out_compress=False, 
+    def _execBackupCmd(self, args, env=None, out_path=None, out_compress=False, 
                        force_exec=False):
         out_fp = None
         if out_path is not None:
@@ -219,7 +237,7 @@ class BackupPluginBase:
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, 
                                        bufsize=bufferSize,
-                                       env = self._env)
+                                       env=env)
             except Exception, e:
                 raise errors.BackupCmdError("Backup command execution failed.",
                                             "Command: %s" % ' '.join(args),
@@ -251,7 +269,7 @@ class BackupPluginBase:
                                        stdout=(out_fp or subprocess.PIPE), 
                                        stderr=subprocess.PIPE, 
                                        bufsize=bufferSize,
-                                       env = self._env)
+                                       env = env)
             except Exception, e:
                 raise errors.BackupCmdError("Backup command execution failed.",
                                             "Command: %s" % ' '.join(args),
