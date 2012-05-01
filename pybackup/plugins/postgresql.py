@@ -67,7 +67,7 @@ class PluginPostgreSQL(BackupPluginBase):
             logger.info("Finished PostgreSQL Global Objects dump."
                         "  Backup: %s", dump_path)
         else:
-            raise errors.BackupError("Dump failed with error code: %." 
+            raise errors.BackupError("Dump failed with error code: %s" 
                                      % returncode,
                                      *utils.splitMsg(err))
         
