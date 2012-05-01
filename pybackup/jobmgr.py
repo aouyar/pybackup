@@ -119,7 +119,7 @@ def execExternalCmd(args, env, dry_run=False):
     out, err = cmd.communicate(None) #@UnusedVariable
     if not cmd.returncode == 0:
         raise errors.ExternalCmdError("Execution of external command failed"
-                                      " with error code: %s." 
+                                      " with error code: %s" 
                                       % cmd.returncode,
                                       *utils.splitMsg(err))
 
@@ -298,51 +298,89 @@ class JobManager:
                                                          "directory (%s) failed."
                                                          % backup_path)
             logger.debug("Backup base directory (%s) created.", backup_path)
-        
-    def runJobs(self):
+            
+    def preExec(self):
         dry_run = self._globalConf.get('dry_run', False)
         pre_exec = self._globalConf.get('pre_exec')
         if pre_exec is not None:
             logmgr.setContext('PRE-EXEC')
             logger.info("Executing general pre-execution script.")
             execExternalCmd(pre_exec.split(), None, dry_run)
-        for job_name in self._jobs:
-            self._numJobs += 1
-            logmgr.setContext(job_name)
-            job_conf = self._jobsConf.get(job_name)
-            try:
-                if job_conf:
-                    if job_conf.has_key('active'):
-                        active = parse_value(job_conf['active'], True)
-                        if not active:
-                            logger.warn("Backup job disabled by configuration.")
-                            self._numJobsDisabled += 1
-                            continue
-                    logger.info("Starting execution of backup job.")
-                    job = BackupJob(job_name, self._globalConf, job_conf)
-                    job.run()
-                    logger.info("Finished execution of backup job.")
-                    self._numJobsSuccess += 1
-                else:
-                    raise errors.BackupConfigError("No configuration found for "
-                                                   "backup job.")
-            except errors.BackupError, e:
-                self._numJobsError += 1
-                if e.trace or e.fatal:
-                    raise
-                else:
-                    if e.fatal:
-                        level = logging.CRITICAL
-                    else:
-                        level = logging.ERROR
-                    logger.log(level, e.desc)
-                    for line in e:
-                        logger.log(level, "  %s" , line)
+            
+    def postExec(self):
+        dry_run = self._globalConf.get('dry_run', False)
         post_exec = self._globalConf.get('post_exec')
         if post_exec is not None:
             logmgr.setContext('POST-EXEC')
             logger.info("Executing general post-execution script.")
             execExternalCmd(post_exec.split(), None, dry_run)
+        
+    def runJobs(self):
+        dry_run = self._globalConf.get('dry_run', False)
+        for job_name in self._jobs:
+            self._numJobs += 1
+            logmgr.setContext(job_name)
+            job_conf = self._jobsConf.get(job_name)
+            if job_conf is not None:
+                active = parse_value(job_conf.get('active', 'yes'), True)
+                if active:       
+                    job_pre_exec = job_conf.get('job_pre_exec')
+                    job_post_exec = job_conf.get('job_post_exec')
+                    if job_pre_exec is not None:
+                        logger.info("Executing job pre-execution script.")
+                        try:
+                            execExternalCmd(job_pre_exec.split(), None, dry_run)
+                            job_pre_exec_ok = True
+                        except errors.ExternalCmdError, e:
+                            job_pre_exec_ok = False
+                            job_ok = False
+                            logger.error("Job pre-execution script failed.")
+                            logger.error(e.desc)
+                            for line in e:
+                                logger.error("  %s" , line)
+                            
+                    else:
+                        job_pre_exec_ok = True
+                    if job_pre_exec_ok:
+                        try:
+                            logger.info("Starting execution of backup job.")
+                            job = BackupJob(job_name, self._globalConf, job_conf)
+                            job.run()
+                            logger.info("Finished execution of backup job.")
+                            job_ok = True
+                        except errors.BackupError, e:
+                            logger.error("Execution of backup job failed.")
+                            job_ok = False
+                            if e.trace or e.fatal:
+                                raise
+                            else:
+                                if e.fatal:
+                                    level = logging.CRITICAL
+                                else:
+                                    level = logging.ERROR
+                                logger.log(level, e.desc)
+                                for line in e:
+                                    logger.log(level, "  %s" , line)
+                    if job_post_exec is not None and job_pre_exec_ok:
+                        logger.info("Executing job post-execution script.")
+                        try:
+                            execExternalCmd(job_post_exec.split(), None, dry_run)
+                        except errors.ExternalCmdError, e:
+                            job_ok = False
+                            logger.error("Job pre-execution script failed.")
+                            logger.error(e.desc)
+                            for line in e:
+                                logger.error("  %s" , line)
+                    if job_ok:
+                        self._numJobsSuccess += 1
+                    else:
+                        self._numJobsError += 1
+                else:
+                    logger.warn("Backup job disabled by configuration.")
+                    self._numJobsDisabled += 1
+            else:
+                logger.error("No configuration found for backup job.")
+                self._numJobsError += 1
     
     def run(self):
         self.loggingInit()
@@ -362,7 +400,9 @@ class JobManager:
             self.initUmask()
             self.createBaseDir()
             self.loggingConfig()
+            self.preExec()
             self.runJobs()
+            self.postExec()
         self.loggingEnd()
         
 
