@@ -6,6 +6,7 @@ import platform
 import ConfigParser
 import optparse
 import logging
+import subprocess
 from datetime import date
 from pybackup import errors
 from pybackup import utils
@@ -24,6 +25,7 @@ __status__ = "Development"
 
 
 # Defaults
+bufferSize = 8192
 defaultConfigPaths = ['./pybackup.conf', '/etc/pybackup.conf']
 
 
@@ -63,7 +65,7 @@ def parseCmdline(argv=None):
     else:
         (cmdopts, args) = parser.parse_args(argv[1:])
     if cmdopts.trace:
-        errors.set_trace()
+        errors.setTrace()
     opts = {}
     opts['dry_run'] = cmdopts.dryRun
     if cmdopts.debug:
@@ -99,6 +101,29 @@ def parseCmdline(argv=None):
     return (opts, jobs)
 
 
+def execExternalCmd(args, env, dry_run=False):
+    if dry_run:
+        logger.debug("Fake execution of command: %s", ' '.join(args))
+        return (0, '', '')
+    logger.debug("Executing command: %s", ' '.join(args))
+    try:
+        cmd = subprocess.Popen(args,
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.PIPE, 
+                               bufsize=bufferSize,
+                               env = env)
+    except Exception, e:
+        raise errors.ExternalCmdError("External script execution failed.",
+                                      "Command: %s" % ' '.join(args),
+                                      "Error Message: %s" % str(e))
+    out, err = cmd.communicate(None) #@UnusedVariable
+    if not cmd.returncode == 0:
+        raise errors.ExternalCmdError("Execution of external command failed"
+                                      " with error code: %s." 
+                                      % cmd.returncode,
+                                      *utils.splitMsg(err))
+
+
 class JobManager:
     
     _globalOpts = {'backup_root': 'Root directory for storing backups.',
@@ -127,27 +152,32 @@ class JobManager:
         self._cmdConf = opts
         self._globalConf.update(opts)
         self._help = opts.get('help')
+        self._numJobs = 0
+        self._numJobsDisabled = 0
+        self._numJobsSuccess = 0
+        self._numJobsError = 0
 
     def loggingInit(self):
         if self._help is None:
-            logmgr.setContext('STARTUP')
+            logmgr.setContext('STARTUP', self._globalConf.get('dry_run', False))
         else:
             logmgr.setContext('HELP')
         level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
         logmgr.configConsole(level)
         if self._help is None:
-            if self._globalConf.get('dry_run', False):
-                logger.info("Start Execution of Backup Jobs. (Test Run)")
-            else:
-                logger.info("Start Execution of Backup Jobs.")
+            logger.info("Start Execution of Backup Jobs.")
         
     def loggingEnd(self):
         if self._help is None:
-            logmgr.setContext('FINAL')
-            if self._globalConf.get('dry_run', False):
-                logger.info("Finished Execution of Backup Jobs. (Test Run)")
-            else:    
-                logger.info("Finished Execution of Backup Jobs.")
+            logmgr.setContext('FINAL')    
+            logger.info("Finished Execution of %s Backup Jobs."
+                        "    Enabled/Disabled: %s / %s"
+                        "    Succesful/Failed: %s / %s", 
+                        self._numJobs,  
+                        self._numJobs - self._numJobsDisabled,
+                        self._numJobsDisabled, 
+                        self._numJobsSuccess, 
+                        self._numJobsError)
         
     def loggingConfig(self):
         console_level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
@@ -270,31 +300,34 @@ class JobManager:
             logger.debug("Backup base directory (%s) created.", backup_path)
         
     def runJobs(self):
+        dry_run = self._globalConf.get('dry_run', False)
+        pre_exec = self._globalConf.get('pre_exec')
+        if pre_exec is not None:
+            logmgr.setContext('PRE-EXEC')
+            logger.info("Executing general pre-execution script.")
+            execExternalCmd(pre_exec.split(), None, dry_run)
         for job_name in self._jobs:
+            self._numJobs += 1
             logmgr.setContext(job_name)
             job_conf = self._jobsConf.get(job_name)
-            dry_run = self._globalConf.get('dry_run', False)
             try:
                 if job_conf:
                     if job_conf.has_key('active'):
                         active = parse_value(job_conf['active'], True)
                         if not active:
                             logger.warn("Backup job disabled by configuration.")
+                            self._numJobsDisabled += 1
                             continue
-                    if dry_run:
-                        logger.info("Starting execution of backup job. (Test Run)")
-                    else:
-                        logger.info("Starting execution of backup job.")
+                    logger.info("Starting execution of backup job.")
                     job = BackupJob(job_name, self._globalConf, job_conf)
                     job.run()
-                    if dry_run:
-                        logger.info("Finished execution of backup job. (Test Run)")
-                    else:
-                        logger.info("Finished execution of backup job.")
+                    logger.info("Finished execution of backup job.")
+                    self._numJobsSuccess += 1
                 else:
                     raise errors.BackupConfigError("No configuration found for "
                                                    "backup job.")
             except errors.BackupError, e:
+                self._numJobsError += 1
                 if e.trace or e.fatal:
                     raise
                 else:
@@ -305,6 +338,11 @@ class JobManager:
                     logger.log(level, e.desc)
                     for line in e:
                         logger.log(level, "  %s" , line)
+        post_exec = self._globalConf.get('post_exec')
+        if post_exec is not None:
+            logmgr.setContext('POST-EXEC')
+            logger.info("Executing general post-execution script.")
+            execExternalCmd(post_exec.split(), None, dry_run)
     
     def run(self):
         self.loggingInit()

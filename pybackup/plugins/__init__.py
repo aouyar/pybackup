@@ -26,7 +26,7 @@ bufferSize = 8192
 
 
 
-def load_module(module, parent=None, path=None):
+def loadModule(module, parent=None, path=None):
     (mod, sep, tail) = module.partition('.') #@UnusedVariable
     if parent is not None:
         modname = '%s.%s' % (parent, mod)
@@ -48,25 +48,10 @@ def load_module(module, parent=None, path=None):
     if tail == '':
         return modobj
     else:
-        return load_module(tail, modname, modobj.__path__)
-        
-        
-def exec_ext_cmd(args, env):
-    try:
-        cmd = subprocess.Popen(args,
-                               stdout=subprocess.PIPE, 
-                               stderr=subprocess.PIPE, 
-                               bufsize=bufferSize,
-                               env = env)
-    except Exception, e:
-        raise errors.ExternalCmdError("External script execution failed.",
-                                      "Command: %s" % ' '.join(args),
-                                      "Error Message: %s" % str(e))
-    out, err = cmd.communicate(None)
-    return (cmd.returncode, out, err)
-    
-    
+        return loadModule(tail, modname, modobj.__path__)
 
+    
+    
 class BackupPluginRegistry:
     
     def __init__(self):
@@ -80,7 +65,7 @@ class BackupPluginRegistry:
                 modobj = sys.modules[plugin]
             else:
                 try:
-                    modobj = load_module(module)
+                    modobj = loadModule(module)
                 except ImportError, e:
                     raise errors.BackupConfigError(
                         "Failed loading backup plugin: %s   Module: %s" 
@@ -262,7 +247,7 @@ class BackupPluginBase:
             else:
                 raise errors.BackupError("Compression of backup failed "
                                          "with error code %s." % cmd_comp.returncode,
-                                         utils.split_msg(comp_err))
+                                         utils.splitMsg(comp_err))
         else:
             try:
                 cmd = subprocess.Popen(args,

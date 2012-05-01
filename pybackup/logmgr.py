@@ -17,21 +17,28 @@ __status__ = "Development"
 
 # Defaults
 defaultLogLevel = logging.INFO
-defaultLogFormat = '%(asctime)s:%(job)s:%(levelname)-8s %(message)s'
+defaultLogFormat = '%(asctime)s:%(context)s:%(levelname)-8s %(message)s'
 defaultDateFormat = '%Y-%m-%d %H:%M:%S'
 
 
 class LogContext(logging.Filter):
     
-    def __init__(self, context):
-        self._context = context
+    def __init__(self, context, test_run=None):
+        if test_run is None:
+            test_run = False
+        self.setContext(context, test_run)
         logging.Filter.__init__(self)
     
-    def setContext(self, context):
-        self._context = context
+    def setContext(self, context, test_run=None):
+        if test_run is not None:
+            self._testRun = test_run
+        if self._testRun:
+            self._context = "TEST-%s" % context
+        else:
+            self._context = context    
     
     def filter(self, record):
-        record.job = self._context
+        record.context = self._context
         return True
 
 
@@ -53,8 +60,8 @@ class LogManager:
     def getLogLevel(self, level_name):
         return logging._levelNames.get(str(level_name).upper())
         
-    def setContext(self, context):
-        self._logContext.setContext(context)
+    def setContext(self, context, test_run=None):
+        self._logContext.setContext(context, test_run)
     
     def configConsole(self, level):
         if level < self._minLevel:
