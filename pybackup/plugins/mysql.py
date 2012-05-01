@@ -76,7 +76,7 @@ class PluginMySQL(BackupPluginBase):
                         "  Backup: %s", dump_desc, db, dump_path)
         else:
             raise errors.BackupError("Dump of %s for %s failed "
-                                     "with error code %s." 
+                                     "with error code: %s" 
                                      % (dump_desc, db, returncode),
                                      *utils.splitMsg(err))    
     

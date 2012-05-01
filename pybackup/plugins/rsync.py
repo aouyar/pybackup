@@ -148,7 +148,7 @@ class PluginRsync(BackupPluginBase):
         if returncode == 0:
             logger.info("Finished backup of paths: %s", ', '.join(self._path_list))
         else:
-            raise errors.BackupError("Backup of paths failed with error code: %s." 
+            raise errors.BackupError("Backup of paths failed with error code: %s" 
                                      % returncode,
                                      *utils.splitMsg(err))
 

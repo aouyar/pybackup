@@ -246,7 +246,7 @@ class BackupPluginBase:
                 return (cmd.returncode, '', err)
             else:
                 raise errors.BackupError("Compression of backup failed "
-                                         "with error code %s." % cmd_comp.returncode,
+                                         "with error code: %s" % cmd_comp.returncode,
                                          utils.splitMsg(comp_err))
         else:
             try:
