@@ -78,7 +78,7 @@ class PluginMySQL(BackupPluginBase):
             raise errors.BackupError("Dump of %s for %s failed "
                                      "with error code %s." 
                                      % (dump_desc, db, returncode),
-                                     *utils.split_msg(err))    
+                                     *utils.splitMsg(err))    
     
     def dumpDatabases(self):
         if not self._conf.has_key('db_list'):

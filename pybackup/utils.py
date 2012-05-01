@@ -16,7 +16,7 @@ __status__ = "Development"
 
 
 
-def split_msg(msg):
+def splitMsg(msg):
     return [line for line in msg.splitlines() if len(line.strip()) > 0]
 
 def checkUser(user):

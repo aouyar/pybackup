@@ -50,9 +50,9 @@ class BackupBadPluginError(BackupError):
     fatal = True
 
 
-def set_trace():
+def setTrace():
     BackupError.trace = True
     
-def unset_trace():
+def unsetTrace():
     BackupError.trace = False
     

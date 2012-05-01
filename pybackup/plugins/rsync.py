@@ -150,7 +150,7 @@ class PluginRsync(BackupPluginBase):
         else:
             raise errors.BackupError("Backup of paths failed with error code: %s." 
                                      % returncode,
-                                     *utils.split_msg(err))
+                                     *utils.splitMsg(err))
 
 class PluginBackupSync(PluginRsync):
     

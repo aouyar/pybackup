@@ -69,7 +69,7 @@ class PluginPostgreSQL(BackupPluginBase):
         else:
             raise errors.BackupError("Dump failed with error code %s." 
                                      % returncode,
-                                     *utils.split_msg(err))
+                                     *utils.splitMsg(err))
         
     def dumpDatabase(self, db):
         dump_filename = "%s_%s.dump" % (self._conf['filename_dump_db'], 
@@ -87,7 +87,7 @@ class PluginPostgreSQL(BackupPluginBase):
         else:
             raise errors.BackupError("Dump of PostgreSQL database %s failed "
                                      "with error code %s." % (db, returncode),
-                                     *utils.split_msg(err))
+                                     *utils.splitMsg(err))
     
     def dumpDatabases(self):
         if not self._conf.has_key('db_list'):
