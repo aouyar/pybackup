@@ -22,6 +22,9 @@ __status__ = "Development"
 
 
 class PluginMySQL(BackupPluginBase):
+    """Class for backups of MySQL Database.
+    
+    """
     
     _extOpts = {'filename_dump_db': 'Filename for MySQL dump files.',
                 'db_host': 'MySQL Database Server Name or IP.', 
@@ -34,6 +37,12 @@ class PluginMySQL(BackupPluginBase):
                     'filename_dump_db': 'mysql_dump',}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         BackupPluginBase.__init__(self, global_conf, job_conf)
         self._connArgs = []
         for (opt, key) in (('-h', 'db_host'),

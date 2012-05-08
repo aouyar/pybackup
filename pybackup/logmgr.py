@@ -17,8 +17,13 @@ __status__ = "Development"
 
 # Defaults
 defaultLogLevel = logging.INFO
+"""Default logging level."""
+
 defaultLogFormat = '%(asctime)s:%(context)s:%(levelname)-8s %(message)s'
+"""Default log entry format."""
+
 defaultDateFormat = '%Y-%m-%d %H:%M:%S'
+"""Default date format for log entries."""
 
 
 class LogContext(logging.Filter):

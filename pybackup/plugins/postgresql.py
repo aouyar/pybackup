@@ -22,6 +22,9 @@ __status__ = "Development"
 
 
 class PluginPostgreSQL(BackupPluginBase):
+    """Class for backups of PostgreSQL Database.
+    
+    """
     
     _extOpts = {'filename_dump_globals': '', 
                 'filename_dump_db': '',
@@ -37,6 +40,12 @@ class PluginPostgreSQL(BackupPluginBase):
                     'filename_dump_db': 'pg_dump_db',}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         BackupPluginBase.__init__(self, global_conf, job_conf)
         self._connArgs = []
         for (opt, key) in (('-h', 'db_host'),

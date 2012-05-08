@@ -3,6 +3,11 @@ pybackup - Backup Script in Python
 
 Python Module for implementing backup scripts.
 
+Development started, when I was fed up with developing custom shell scripts for 
+each backup task, and needed something with better error checking and reporting.
+
+Backup methods are implemented by plugins that can be loaded at startup.
+
 
 Licensing
 ---------

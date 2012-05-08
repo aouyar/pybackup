@@ -25,44 +25,73 @@ __status__ = "Development"
 bufferSize = 8192
 
 
-
-def loadModule(module, parent=None, path=None):
-    (mod, sep, tail) = module.partition('.') #@UnusedVariable
-    if parent is not None:
-        modname = '%s.%s' % (parent, mod)
-    else:
-        modname = mod
-    if not sys.modules.has_key(modname):
-        fp = None
-        try:
+def loadModule(module):
+    """Loads module recursively.
+        
+        @param module: Module name.
+        
+    """
+    
+    def load_module(module, parent=None, path=None):
+        """Function to implement recursive module loading.
+        
+        @param module: Module name.
+        @param parent: Module parent name.
+        @param path:   Path for module file. (Must be None for starting recursion.)
+        @return:       Module object.
+                
+        """
+        (mod, sep, tail) = module.partition('.') #@UnusedVariable
+        if parent is not None:
+            modname = '%s.%s' % (parent, mod)
+        else:
+            modname = mod
+        if not sys.modules.has_key(modname):
+            fp = None
             try:
-                fp, pathname, description = imp.find_module(mod, path)
-                modobj = imp.load_module(modname, fp, pathname, description)
-            except ImportError:
-                raise
-        finally:
-            if fp:
-                fp.close()
-    else:
-        modobj = sys.modules[modname]
-    if tail == '':
-        return modobj
-    else:
-        return loadModule(tail, modname, modobj.__path__)
+                try:
+                    fp, pathname, description = imp.find_module(mod, path)
+                    modobj = imp.load_module(modname, fp, pathname, description)
+                except ImportError:
+                    raise
+            finally:
+                if fp:
+                    fp.close()
+        else:
+            modobj = sys.modules[modname]
+        if tail == '':
+            return modobj
+        else:
+            return load_module(tail, modname, modobj.__path__)
+        
+    return load_module(module)
 
     
     
 class BackupPluginRegistry:
+    """Class that implements registration and administration of backup plugins.
+    
+    """
     
     def __init__(self):
+        """Constructor
+        
+        """
         self._plugins = {}
         self._methodDict = {}
         
     def loadPlugin(self, plugin, module):
-        if not self._plugins.has_key(plugin):
+        """
+        
+        @param plugin: Plugin name.
+        @param module: Module name.
+        @return:       Module object.
+              
+        """
+        if not self._plugins.has_key(module):
             # Fast path: see if the module has already been imported.
-            if sys.modules.has_key(plugin):
-                modobj = sys.modules[plugin]
+            if sys.modules.has_key(module):
+                modobj = sys.modules[module]
             else:
                 try:
                     modobj = loadModule(module)
@@ -111,9 +140,20 @@ class BackupPluginRegistry:
             return modobj
         
     def getPluginList(self):
+        """Returns list of registered plugins.
+        
+        @return: List of registered plugins.
+        
+        """
         return self._plugins.keys()
     
     def getPluginDesc(self, plugin):
+        """Returns plugin description text.
+        
+        @param plugin: Plugin name.
+        @return:       Description string.
+        
+        """
         if self._plugins.has_key(plugin):
             return self._plugins[plugin]['description']
         else:
@@ -121,6 +161,11 @@ class BackupPluginRegistry:
                                            % plugin)
         
     def getMethodList(self, plugin):
+        """Returns list of methods registered for plugin.
+        
+        @param plugin: Plugin name.
+        @return:       List of methods registered for plugin.
+        """
         if self._plugins.has_key(plugin):
             return self._plugins[plugin]['methods']
         else:
@@ -128,9 +173,22 @@ class BackupPluginRegistry:
                                            % plugin)
     
     def hasMethod(self, name):
+        """Returns True if method with name is registered.
+        
+        @param name: Name of method.
+        @return:     Boolean
+        
+        """
         return self._methodDict.has_key(name)
     
     def runMethod(self, name, global_conf, job_conf):
+        """Runs method.
+        
+        @param name:        Backup method name.
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         if self._methodDict.has_key(name):
             (cls, func) = self._methodDict[name]
             obj = cls(global_conf, job_conf)
@@ -140,6 +198,12 @@ class BackupPluginRegistry:
                                            % name)
     
     def helpMethod(self, name):
+        """
+        
+        @param name: Backup method name.
+        @return:     Multi-line help text for method.
+        
+        """
         if self._methodDict.has_key(name):
             (cls, func) = self._methodDict[name] #@UnusedVariable
             return cls.getHelpText()
@@ -147,9 +211,16 @@ class BackupPluginRegistry:
             None
             
 backupPluginRegistry = BackupPluginRegistry()
+"""Plugin registry instance. (Normally additional instances should not be needed.)"""
+
 
 
 class BackupPluginBase:
+    """Base class for backup plugins.
+    
+    Backup plugins must extend this class.
+    
+    """
     
     _baseOpts = {'job_name': 'Job name.', 
                  'job_path': 'Backup path for job.',
@@ -158,16 +229,37 @@ class BackupPluginBase:
                  'user': 'If defined, check if script is being run by user.',
                  'job_pre_exec': 'Script to be executed before backup job.',
                  'job_post_exec': 'Script to be executed after backup job.',}
+    """Configuration options common to all plugins."""
+    
     _extOpts = {}
+    """To be overwritten in plugins to define plugin specific configuration 
+    options."""
+    
     _baseReqOptList = ('job_path',)
+    """List of required options common to all plugins."""
+    
     _extReqOptList = ()
+    """To be overwritten in plugins to define plugin specific required options."""
+    
     _globalReqOptList = ('cmd_compress', 'suffix_compress',
                          'cmd_tar', 'suffix_tar', 'suffix_tgz',)
+    """List of required general configuration options common to all plugins."""
+    
     _baseDefaults = {}
+    """Dictionary of defaults for all plugins."""
+    
     _extDefaults = {}
+    """Dictionary of plugin specific defaults."""
+    
     _methodDict = {}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         self._conf = {}
         self._env = None
         self._dryRun = global_conf.get('dry_run', False)
@@ -189,21 +281,39 @@ class BackupPluginBase:
         
     @classmethod
     def getHelpText(cls):
+        """Returns help text for plugin.
+        
+        @return: Multi-line help text.
+        
+        """
         lines = []
-        lines.append("Base Options")
+        lines.append("Plugin Generic Options")
         for opt in sorted(cls._baseOpts.keys()):
             desc = cls._baseOpts[opt]
             lines.append("    %-24s: %s" % (opt, desc))
         lines.append("")
-        lines.append("Plugin Options")
+        lines.append("Plugin Specific Options")
         for opt in sorted(cls._extOpts.keys()):
             desc = cls._extOpts[opt]
             lines.append("    %-24s: %s" % (opt, desc))
-        lines.append("")
         return "\n".join(lines)
         
     def _execBackupCmd(self, args, env=None, out_path=None, out_compress=False, 
                        force_exec=False):
+        """Executes backup command.
+        
+        @param args:         List of command arguments. The executable path must
+                             be passed as first argument.
+        @param env:          Dictionary of environment variables for running
+                             backup command. The execution environment is not 
+                             modified by default. 
+        @param out_path:     Redirect output to file with path out_path if defined.
+        @param out_compress: The output to file will be compressed if True.
+        @param force_exec:   Force execution of command even for dry-run.
+        @return:             Tuple of return code, standard output text,
+                             standard error text.
+        
+        """
         out_fp = None
         if out_path is not None:
                 try:

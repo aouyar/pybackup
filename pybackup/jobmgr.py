@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Main script for executing backup processes that consist of one or multiple
+backup jobs. The module includes the definitions for backup jobs and the logic
+for executing them.
+
+"""
 
 import sys
 import os
@@ -30,7 +35,17 @@ defaultConfigPaths = ['./pybackup.conf', '/etc/pybackup.conf']
 
 
 def parseCmdline(argv=None):
-    """Parses commandline options."""
+    """Parses and verifies command line options.
+    
+    @param argv: Simulated list of command line arguments can be passed 
+                 explicitly for testing purposes. The arguments are obtained 
+                 from the command line by default.
+    @return:     (opts, jobs) -> opts: Dictionary of of options.
+                                 jobs: List of items (jobs, plugins, etc.) 
+                                       to be processed.
+    
+    """
+    
     parser = optparse.OptionParser()
     parser.add_option('-c', '--conf', help='Path for configuration file.',
                       dest='confPath', default=None, 
@@ -57,8 +72,11 @@ def parseCmdline(argv=None):
     parser.add_option('-m', '--list-methods', 
                       help='List available backup methods in loaded plugins.',
                       dest='listMethods', default=False, action='store_true')
+    parser.add_option('-g', '--help-job', 
+                      help='Print help text for general job options.',
+                      dest='helpJob', default=False, action='store_true')
     parser.add_option('-i', '--help-method', 
-                      help='Print help for text for method.',
+                      help='Print help text for plugin method.',
                       dest='helpMethod', default=False, action='store_true')
     if argv is None:
         (cmdopts, args) = parser.parse_args()
@@ -84,6 +102,8 @@ def parseCmdline(argv=None):
         opts['help'] = 'list-plugins'
     elif cmdopts.listMethods:
         opts['help'] = 'list-methods'
+    elif cmdopts.helpJob:
+        opts['help'] = 'help-job'
     elif cmdopts.helpMethod:
         opts['help'] = 'help-method'
         if len(args) == 1:
@@ -101,7 +121,20 @@ def parseCmdline(argv=None):
     return (opts, jobs)
 
 
-def execExternalCmd(args, env, dry_run=False):
+def execExternalCmd(args, env=None, dry_run=False):
+    """Method for executing external scripts.
+    
+    @param args:    List of command line arguments including the executable
+                    as the first argument.
+    @param env:     Dictionary for overriding environment for executing the 
+                    external scripts. The environment of the backup process
+                    is used as-is by default.
+    @param dry_run: If True, execute a Test Run without actually executing the 
+                    external script. Used for testing purposes. 
+                    (Default: False)
+    @return:        Tuple of standard output text, standard error text.
+                     
+    """
     if dry_run:
         logger.debug("Fake execution of command: %s", ' '.join(args))
         return (0, '', '')
@@ -122,9 +155,13 @@ def execExternalCmd(args, env, dry_run=False):
                                       " with error code: %s" 
                                       % cmd.returncode,
                                       *utils.splitMsg(err))
-
+    else:
+        return (out, err)
 
 class JobManager:
+    """The class implementing the logic for executing multiple backup jobs.
+    
+    """
     
     _globalOpts = {'backup_root': 'Root directory for storing backups.',
                    'hostname_dir': 'Create subdirectory for each hostname. (yes/no)', 
@@ -135,7 +172,12 @@ class JobManager:
                    'filename_logfile': 'Filename for log file.',
                    'pre_exec': 'Script to be executed before starting running jobs.',
                    'post_exec': 'Script to be executed after finishing running jobs.', }
+    """Dictionary of valid general configuration file options and corresponding 
+    textual descriptions of the options."""
     _reqGlobalOpts = ('backup_root',)
+    """List of required general configuration options. The backup process will
+    fail if any of the required options is not defined in the configuration
+    file."""
     _globalConf = {'console_loglevel': 'info',
                    'logfile_loglevel': 'info',
                    'filename_logfile': 'backup.log',
@@ -144,8 +186,16 @@ class JobManager:
                    'cmd_tar': 'tar',
                    'suffix_tar': 'tar',
                    'suffix_tgz': 'tgz',}
+    """Dictionary mapping global configuration options to default values. Only
+    the configuration options with default values are included."""
     
     def __init__(self, opts, jobs):
+        """Constructor for the Job Manager.
+        
+        @param opts: Dictionary of options passed from command line.
+        @param jobs: List of items (jobs, plugins, etc.) to be processed.
+        
+        """
         self._plugins = {}
         self._jobsConf = None
         self._jobs = jobs
@@ -156,8 +206,26 @@ class JobManager:
         self._numJobsDisabled = 0
         self._numJobsSuccess = 0
         self._numJobsError = 0
+        
+    @classmethod
+    def getHelpText(cls):
+        """Return help text for general options for jobs.
+        
+        @return: Multi-line help text.
+        
+        """
+        lines = []
+        lines.append("General Job Options")
+        for opt in sorted(cls._globalOpts.keys()):
+            desc = cls._globalOpts[opt]
+            lines.append("    %-24s: %s" % (opt, desc))
+        return "\n".join(lines)
 
     def loggingInit(self):
+        """Initializes logging at the beginning of the execution of the backup
+        process.
+        
+        """
         if self._help is None:
             logmgr.setContext('STARTUP', self._globalConf.get('dry_run', False))
         else:
@@ -168,6 +236,10 @@ class JobManager:
             logger.info("Start Execution of Backup Jobs.")
         
     def loggingEnd(self):
+        """Writes-out the final log message before finalizing the execution of
+        the backup process. 
+        
+        """
         if self._help is None:
             logmgr.setContext('FINAL')    
             logger.info("Finished Execution of %s Backup Jobs."
@@ -180,6 +252,10 @@ class JobManager:
                         self._numJobsError)
         
     def loggingConfig(self):
+        """Configures logging depending on the settings from configuration
+        files and command line options.
+        
+        """
         console_level = logmgr.getLogLevel(self._globalConf['console_loglevel'])
         if console_level is None:
             raise errors.BackupFatalConfigError("Invalid log level set in "
@@ -199,6 +275,9 @@ class JobManager:
         logger.debug("Activated logging to file: %s" % log_path)
             
     def parseConfFile(self):
+        """Parses and validates configuration file.
+        
+        """
         confmgr = ConfigParser.SafeConfigParser()
         read_paths = confmgr.read(self._globalConf['config_path'])
         if not read_paths:
@@ -242,10 +321,16 @@ class JobManager:
         self._globalConf['backup_path'] = os.path.join(*backup_path_elem)
         
     def loadPlugins(self):
+        """Loads all backup plugins listed in configuration file.
+        
+        """
         for (plugin, module) in self._plugins.items():
             backupPluginRegistry.loadPlugin(plugin, module)
     
     def listJobs(self):
+        """Lists all jobs defined in configuration file.
+        
+        """
         for job_name in self._jobsConf.keys():
             job_conf = self._jobsConf.get(job_name)
             if job_conf.has_key('active'):
@@ -257,38 +342,74 @@ class JobManager:
                                                                str(job_conf.get('method')))
             
     def listPlugins(self):
+        """Lists all backup plugins defined in configuration file. 
+        
+        """
         for (plugin, module) in self._plugins.items():
             desc = backupPluginRegistry.getPluginDesc(plugin)
             print "Plugin: %s   Module: %s\n%s\n" % (plugin, module, desc)
             
     def listMethods(self):
+        """List all backup methods registered by plugins defined in 
+        configuration file.
+        
+        """
         for plugin in sorted(backupPluginRegistry.getPluginList()):
             print "Plugin: %s" % plugin
             for method in sorted(backupPluginRegistry.getMethodList(plugin)):
                 print "    Method: %s" % method
             print
             
-    def helpMethod(self):
-        method = self._jobs[0]
-        help_text = backupPluginRegistry.helpMethod(method)
-        if help_text is not None:
-            print help_text
+    def helpJob(self):
+        """Prints help text for general job options.
+        
+        """
+        help_job = self.getHelpText()
+        print help_job
+        print
+            
+    def helpMethod(self, method):
+        """Prints help text for backup method.
+        
+        @param method: Backup method name.
+        
+        """
+        help_job = self.getHelpText()
+        help_plugin = backupPluginRegistry.helpMethod(method)
+        if help_plugin is not None:
+            print help_job
+            print
+            print help_plugin
+            print
         else:
             print "Invalid backup method: %s" % method
             
     def initUmask(self):
+        """Sets umask if the umask general option is defined in the configuration 
+        file.
+           
+        """
         umask = self._globalConf.get('umask')
         if umask is not None:
             os.umask(int(umask, 8))
             logger.debug("OS umask set to: %s", umask)
         
     def checkUser(self):
+        """Checks if the backup script is being run with the correct user if
+        user checking (user general option) is configured in the configuration 
+        file.
+        
+        """
         user = self._globalConf.get('user')
         if user is not None and not utils.checkUser(user):
             raise errors.BackupFatalEnvironmentError("Backup script must be run "
                                                      "as user %s." % user)
             
     def createBaseDir(self):
+        """Creates the base directory defined by backup_path general option in 
+        configuration file.
+        
+        """
         backup_path = self._globalConf['backup_path']
         if not os.path.isdir(backup_path):
             try:
@@ -300,6 +421,10 @@ class JobManager:
             logger.debug("Backup base directory (%s) created.", backup_path)
             
     def preExec(self):
+        """Executes pre_exec script if defined in general options section of
+        the configuration file.
+        
+        """
         dry_run = self._globalConf.get('dry_run', False)
         pre_exec = self._globalConf.get('pre_exec')
         if pre_exec is not None:
@@ -308,6 +433,10 @@ class JobManager:
             execExternalCmd(pre_exec.split(), None, dry_run)
             
     def postExec(self):
+        """Executes post_exec script if defined in general options section of
+        the configuration file.
+        
+        """
         dry_run = self._globalConf.get('dry_run', False)
         post_exec = self._globalConf.get('post_exec')
         if post_exec is not None:
@@ -316,6 +445,11 @@ class JobManager:
             execExternalCmd(post_exec.split(), None, dry_run)
         
     def runJobs(self):
+        """Runs the requested backup jobs. Backup jobs are either explicitly
+        listed on the command line or all active backup jobs in configuration
+        file are run.
+        
+        """
         dry_run = self._globalConf.get('dry_run', False)
         for job_name in self._jobs:
             self._numJobs += 1
@@ -383,6 +517,9 @@ class JobManager:
                 self._numJobsError += 1
     
     def run(self):
+        """Runs backup process.
+        
+        """
         self.loggingInit()
         self.parseConfFile()
         self.loadPlugins()
@@ -393,8 +530,10 @@ class JobManager:
                 self.listPlugins()
             elif self._help == 'list-methods':
                 self.listMethods()
+            elif self._help == 'help-job':
+                self.helpJob()
             elif self._help == 'help-method':
-                self.helpMethod()
+                self.helpMethod(self._jobs[0])
         else:
             self.checkUser()
             self.initUmask()
@@ -409,9 +548,22 @@ class JobManager:
 class BackupJob:
     
     _reqGlobalOpts = ('backup_path',)
+    """List of required general configuration options. The backup process will
+    fail if any of the required options is not defined in the configuration
+    file."""
     _reqJobOpts = ('method',)
+    """List of required job configuration options. The backup process will
+    fail if any of the required options is not defined in the configuration
+    file."""
     
     def __init__(self, name, global_conf, job_conf):
+        """Constructor
+        
+        @param name:        Name of the backup job.
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         self._globalConf = global_conf
         self._jobConf = {'job_name': name}
         self._jobConf.update(job_conf)
@@ -427,12 +579,20 @@ class BackupJob:
                                                  name)
            
     def checkUser(self):
+        """Checks if the backup script is being run with the correct user if
+        user checking (user job option) is configured in the configuration 
+        file.
+                
+        """
         user = self._jobConf.get('user') or self._globalConf.get('user')
         if user is not None and not utils.checkUser(user):
             raise errors.BackupEnvironmentError("Backup job must be run as user %s." 
                                                 % user)
     
     def initJobDir(self):
+        """Creates the directory for storing backup files for job.
+        
+        """
         path = self._jobConf['job_path']
         if not os.path.isdir(path):
             try:
@@ -443,7 +603,11 @@ class BackupJob:
                                                     % path)
             logger.debug("Backup job directory (%s) created.", path)
     
-    def runMethod(self):   
+    def runMethod(self):
+        """Runs backup method defined in the configuration file for the backup 
+        job.
+        
+        """
         method = self._jobConf.get('method')
         if backupPluginRegistry.hasMethod(method):
             backupPluginRegistry.runMethod(method,
@@ -455,6 +619,9 @@ class BackupJob:
                                            % method)
             
     def run(self):
+        """Runs backup job.
+
+        """
         self.checkUser()
         self.initJobDir()
         self.runMethod()
@@ -462,6 +629,14 @@ class BackupJob:
 
 
 def main(argv=None):
+    """Main block for backup script.
+    
+    @param argv: Command line arguments to script. By default the arguments are
+                 obtained automatically from the command line. This variable
+                 exists only for testing purposes.
+    @return:     Integer return code for process.
+    
+    """
     try:
         (opts, jobs) = parseCmdline(argv)
         jobmgr = JobManager(opts, jobs)

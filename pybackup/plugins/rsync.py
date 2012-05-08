@@ -23,6 +23,9 @@ __status__ = "Development"
 
 
 class PluginRsync(BackupPluginBase):
+    """Class for backups using rsync.
+    
+    """
     
     _extOpts = {'remote_host': 'The remote host for backup.'
                                ' (Local host by default)',
@@ -50,6 +53,12 @@ class PluginRsync(BackupPluginBase):
                     'suffix_index': 'list',}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         BackupPluginBase.__init__(self, global_conf, job_conf)
         self._index_filename = "%s.%s" % (self._conf['filename_index'], 
                                           self._conf['suffix_index'])
@@ -153,6 +162,9 @@ class PluginRsync(BackupPluginBase):
                                      *utils.splitMsg(err))
 
 class PluginBackupSync(PluginRsync):
+    """Class for replicating backup directories using rsync.
+    
+    """
     
     _extOpts = {'remote_host': 'The remote host for backup.'
                                ' (Local host by default)',
@@ -179,6 +191,12 @@ class PluginBackupSync(PluginRsync):
                     'suffix_index': 'list',}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         PluginRsync.__init__(self, global_conf, job_conf)
         if not self._conf.has_key('dst_dir'):
             self._conf['dst_dir'] = self._conf['backup_root']

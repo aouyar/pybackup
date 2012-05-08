@@ -23,6 +23,9 @@ __status__ = "Development"
 
 
 class PluginArchive(BackupPluginBase):
+    """Class for archival based on tar.
+    
+    """
     
     _extOpts = {'filename_archive': 'Filename for archive file. (Without extension.)', 
                 'path_list': 'List of paths to be included in the backup.', 
@@ -39,6 +42,12 @@ class PluginArchive(BackupPluginBase):
                     'suffix_index': 'list'}
     
     def __init__(self, global_conf, job_conf):
+        """Constructor
+        
+        @param global_conf: Dictionary of general configuration options.
+        @param job_conf:    Dictionary of job configuration options.
+        
+        """
         BackupPluginBase.__init__(self, global_conf, job_conf)
         
     def _checkSrcPaths(self, path_list):
