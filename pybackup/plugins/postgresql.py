@@ -26,8 +26,8 @@ class PluginPostgreSQL(BackupPluginBase):
     
     """
     
-    _extOpts = {'filename_dump_globals': '', 
-                'filename_dump_db': '',
+    _extOpts = {'filename_dump_globals': 'Filename prefix for globals dump.', 
+                'filename_dump_db': 'Filename prefix for database dumps.',
                 'db_host': 'PostgresSQL Database Server Name or IP.', 
                 'db_port': 'Postgres Database Server Port.', 
                 'db_user': 'Postgres Database Server User.', 
