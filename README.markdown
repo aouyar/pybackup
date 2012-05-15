@@ -10,21 +10,12 @@ Backup methods are implemented by plugins that can be loaded at startup.
 
 WARNING: This is still alpha software.
 
+
 Documentation
 -------------
 
 The documentation for the project and sample graphs for plugins will be 
 published in the [pybackup Project Web Page](http://aouyar.github.com/pybackup/)
-
-
-Licensing
----------
-
-_PyMunin_ is copyrighted free software made available under the terms of the 
-_GPL License Version 3_ or later.
-
-See the _COPYING_ file that acompanies the code for full licensing information.
-
 
 
 Licensing
