@@ -10,6 +10,10 @@ Backup methods are implemented by plugins that can be loaded at startup.
 
 WARNING: This is still alpha software.
 
+For information on other projects you can check 
+my [GitHub Personal Page](http://aouyar.github.com)
+and [GitHub Profile](https://github.com/aouyar).
+
 
 Documentation
 -------------
