@@ -1,6 +1,10 @@
 pybackup - Backup Script in Python
 ==================================
 
+
+About
+-----
+
 Python Module for implementing backup scripts.
 
 Development started, when I was fed up with developing custom shell scripts for 
@@ -18,8 +22,8 @@ and [GitHub Profile](https://github.com/aouyar).
 Documentation
 -------------
 
-The documentation for the project and sample graphs for plugins will be 
-published in the [pybackup Project Web Page](http://aouyar.github.com/pybackup/)
+The documentation for the project and the plugins will be published in 
+the [pybackup Project Web Page](http://aouyar.github.com/pybackup/).
 
 
 Licensing
