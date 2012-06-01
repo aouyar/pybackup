@@ -1,6 +1,19 @@
+#!/usr/bin/env python
+"""pybackup - Installation Script
+
+"""
+
 import os
 from setuptools import setup, find_packages
-import pybackup.jobmgr
+
+__author__ = "Ali Onur Uyar"
+__copyright__ = "Copyright 2011, Ali Onur Uyar"
+__credits__ = []
+__license__ = "GPL"
+__version__ = "0.5"
+__maintainer__ = "Ali Onur Uyar"
+__email__ = "aouyar at gmail.com"
+__status__ = "Development"
 
 
 def read_file(filename):
@@ -15,13 +28,13 @@ def read_file(filename):
 
 setup(
     name='pybackup',
-    version=pybackup.jobmgr.__version__,
-    author=pybackup.jobmgr.__author__,
-    author_email=pybackup.jobmgr.__email__,
+    version=__version__,
+    author=__author__,
+    author_email=__email__,
     packages=find_packages(),
     include_package_data=True,
     url='http://aouyar.github.com/pybackup',
-    license=pybackup.jobmgr.__license__,
+    license=__license__,
     description=u'Python Module for developing backup scripts.',
     classifiers=[
         'Topic :: System :: Archiving :: Backup',
@@ -34,4 +47,5 @@ setup(
     ],
     long_description=read_file('README.markdown'),
     entry_points={'console_scripts': u"pybackup = pybackup.jobmgr:main"},
+    install_requires=["PyMunin",],
 )
